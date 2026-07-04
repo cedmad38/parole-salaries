@@ -10,7 +10,7 @@
 - **Administration → détail des rôles** : bloc dépliable décrivant, pour chaque rôle, ce qu'il peut / ne peut pas faire (cohérent avec canEdit/canDelete/identityFor + RLS).
 - Tests locaux : régression 4/4, gestion élus 5/5. Rôle par défaut `en_attente` confirmé côté base.
 
-⚠️ Déploiement GitHub Pages en échec transitoire (« Deployment failed, try again later » côté GitHub, statut « operational » par ailleurs) : une exécution est en file et rattrapera automatiquement. L'ancienne version reste en ligne ; les nouveautés sont testables en local (serveur relancé sur :8000).
+✅ Déploiement GitHub Pages RÉSOLU : la file était bloquée (runs coincés en « queued » ~30 min, côté GitHub — pas notre code). Débloqué en annulant les runs coincés puis en repoussant : le run frais a réussi en ~40 s. Site public à jour et vérifié (détail des rôles, comptes démo retirés, auto-inscription, mot de passe oublié, bouton supprimer, SW v5).
 Limite constatée : quota d'emails de Supabase (SMTP intégré) très bas (429 over_email_send_rate_limit) → prévoir un SMTP dédié pour un usage réel des emails (réinitialisation / confirmation).
 
 ## Gestion des élus, refresh, cache & retouches — 2026-07-04
