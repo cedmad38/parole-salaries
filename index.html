@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0e1526" />
+  <meta name="description" content="Parole Salariés By Cedmad — déposez une question, un signalement ou une proposition à vos élus CSE / CSSCT. Vos questions, nos actions." />
+  <title>Parole Salariés By Cedmad — Portail salarié</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="icon" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/portal.css" />
+</head>
+<body>
+  <a class="visually-hidden" href="#main">Aller au contenu</a>
+
+  <header class="app-header">
+    <div class="container">
+      <img class="logo" src="assets/logo.png" alt="Logo Parole Salariés By Cedmad" />
+      <div>
+        <div class="brand-name">Parole Salariés</div>
+        <div class="brand-sub">Vos questions, nos actions</div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="portal">
+    <div class="container">
+      <!-- Les écrans sont injectés par salarie.js -->
+      <div id="app-root" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <footer class="portal-foot">
+    <p>Outil des représentants des salariés (CSE / CSSCT). Ce service n'est pas géré par l'employeur.</p>
+    <p>
+      <a href="#" data-nav="confidentialite">Règles de confidentialité</a> ·
+      <a href="#" data-nav="urgence">Contacts d'urgence</a> ·
+      <a href="elus.html">Espace élus</a>
+    </p>
+  </footer>
+
+  <div id="toast-host"></div>
+
+  <script src="js/vendor/supabase.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/assistant.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/salarie.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>

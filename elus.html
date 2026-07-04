@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0e1526" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="PS Élus" />
+  <title>Parole Salariés By Cedmad — Espace élus</title>
+  <link rel="manifest" href="elus.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="icon" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/elus.css" />
+</head>
+<body>
+  <div id="elus-app"><!-- injecté par elus.js --></div>
+  <div id="toast-host"></div>
+
+  <!-- Bouton d'installation de l'application (PWA — icône Dock, fenêtre indépendante) -->
+  <button id="install-btn" type="button" hidden
+    style="position:fixed;right:16px;bottom:16px;z-index:9998;display:inline-flex;align-items:center;gap:8px;
+           padding:10px 16px;border:0;border-radius:12px;color:#fff;font:600 14px/1 -apple-system,sans-serif;
+           background:linear-gradient(120deg,#2ec4a6,#2f7de1,#7c4ddb);box-shadow:0 8px 24px rgba(16,33,58,.28);cursor:pointer">
+    ⬇︎ Installer l'application
+  </button>
+
+  <!-- Librairie Supabase + configuration + pilote en ligne (prêts) -->
+  <script src="js/vendor/supabase.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/vendor/qrcode.min.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/assistant.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/elus.js"></script>
+
+  <script>
+    // Service worker (nécessaire pour l'installation en application)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => {}));
+    }
+    // Invite d'installation (Chrome / Edge sur Mac)
+    const installBtn = document.getElementById('install-btn');
+    let deferredPrompt = null;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault(); deferredPrompt = e; if (!isStandalone) installBtn.hidden = false;
+    });
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.hidden = true;
+    });
+    window.addEventListener('appinstalled', () => { installBtn.hidden = true; });
+    // Safari (macOS) : pas d'invite auto → indice discret pour « Ajouter au Dock »
+    const isSafari = /^((?!chrome|android|crios|edg).)*safari/i.test(navigator.userAgent);
+    if (isSafari && !isStandalone) {
+      installBtn.hidden = false;
+      installBtn.textContent = '⬇︎ Ajouter au Dock (menu Fichier)';
+      installBtn.addEventListener('click', () => {
+        alert("Dans Safari : menu « Fichier » → « Ajouter au Dock… » pour installer l'espace élus comme application, avec sa propre fenêtre.");
+      }, { once: false });
+    }
+  </script>
+</body>
+</html>

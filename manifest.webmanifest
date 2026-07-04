@@ -1,0 +1,18 @@
+{
+  "id": "/parole-salaries-portail",
+  "name": "Parole Salariés By Cedmad",
+  "short_name": "Parole Salariés",
+  "description": "Déposez une question, un signalement ou une proposition à vos élus CSE / CSSCT. Vos questions, nos actions.",
+  "lang": "fr",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1526",
+  "theme_color": "#0e1526",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
