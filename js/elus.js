@@ -52,18 +52,10 @@
           <a href="#" id="link-signup">Créer un compte élu</a>
         </div>` : ''}
         <div class="notice ${data.online() ? 'notice-success' : 'notice-info'}" style="margin-top:14px"><span class="ico">${data.online() ? '🟢' : '🔐'}</span><div class="small">${data.online() ? 'Mode en ligne (base Supabase sécurisée).' : 'Mode local (démo). Renseignez js/config.js pour la base partagée.'}</div></div>
-        <div class="demo-accounts"><p class="small muted" style="margin:14px 0 6px">Comptes de test (mot de passe : <code>demo1234</code>) :</p></div>
       </div>
       <p class="center small muted" style="margin-top:14px"><a href="index.html">← Portail salarié</a></p>`;
     const lf = box.querySelector('#link-forgot'); if (lf) lf.onclick = (e) => { e.preventDefault(); renderForgot(); };
     const ls = box.querySelector('#link-signup'); if (ls) ls.onclick = (e) => { e.preventDefault(); renderSignup(); };
-    const da = box.querySelector('.demo-accounts');
-    data.demoAccounts().forEach(u => {
-      da.appendChild(el('button', { class: 'btn btn-ghost btn-sm', type: 'button',
-        onclick: () => { box.querySelector('#email').value = u.email; box.querySelector('#pass').value = 'demo1234'; } }, [
-        el('span', {}, [document.createTextNode(u.nom + ' — '), el('span', { class: 'muted', text: store.ROLES[u.role].label })]),
-      ]));
-    });
     const doLogin = async () => {
       const btn = box.querySelector('#login-btn'); btn.disabled = true; btn.textContent = 'Connexion…';
       let ident = box.querySelector('#email').value.trim();
@@ -627,6 +619,32 @@
   }
 
   /* ======================= ADMINISTRATION ======================= */
+  // Description des droits réels de chaque rôle (cohérente avec canEdit/canDelete/identityFor/RLS)
+  const ROLE_DETAILS = [
+    { role: 'en_attente', label: 'En attente de validation', tag: 'Aucun accès', color: 'warn',
+      desc: "Compte créé (auto-inscription) mais pas encore activé par un administrateur.",
+      can: [], cant: ['Se connecter au tableau de bord', 'Voir la moindre demande', 'Toute action'] },
+    { role: 'elu_lecteur', label: 'Élu lecteur', tag: 'Lecture seule', color: 'mute',
+      desc: "Consultation des dossiers de ses secteurs autorisés uniquement.",
+      can: ['Consulter les demandes de ses secteurs', 'Consulter les statistiques et le journal'],
+      cant: ['Modifier une demande, un statut, une catégorie', 'Échanger avec un salarié', 'Voir une identité protégée', 'Supprimer une demande', 'Gérer les élus'] },
+    { role: 'elu_gestionnaire', label: 'Élu gestionnaire', tag: 'Traitement', color: 'primary',
+      desc: "Traite les dossiers de ses secteurs autorisés au quotidien.",
+      can: ['Classer, prioriser, affecter une demande', 'Échanger avec le salarié et ajouter des notes internes', 'Ajouter réponses direction / actions de suivi', 'Préparer des questions de réunion', 'Exporter (Word/PDF/copie)'],
+      cant: ['Voir une identité « confidentiel élus »', 'Supprimer une demande', 'Gérer les élus ou les paramètres', 'Sortir de son périmètre (secteurs)'] },
+    { role: 'referent_confidentiel', label: 'Référent confidentiel', tag: 'Identités protégées', color: 'warn',
+      desc: "Même travail qu'un gestionnaire, avec un droit supplémentaire réservé : voir les identités des demandes « confidentiel élus ». Chaque consultation est journalisée.",
+      can: ['Tout ce que fait un élu gestionnaire (dans ses secteurs)', 'Voir les identités « confidentiel élus » (accès tracé)'],
+      cant: ['Supprimer une demande', 'Gérer les élus ou les paramètres', 'Sortir de son périmètre (secteurs)'] },
+    { role: 'admin_cse', label: 'Administrateur CSE', tag: 'Administration', color: 'primary',
+      desc: "Gère l'outil pour toute l'organisation : tous les secteurs, sans restriction de périmètre.",
+      can: ['Tout ce que fait un élu gestionnaire, sur TOUS les secteurs', 'Supprimer une demande (spam/hors sujet), action journalisée', 'Gérer les élus : rôle, secteurs, activer/désactiver un compte', 'Réinitialiser le mot de passe d\'un élu', 'Modifier les paramètres (seuil anti-réidentification, conservation)'],
+      cant: ['Voir une identité « confidentiel élus » (réservé au référent et au super-admin)'] },
+    { role: 'super_admin', label: 'Super-administrateur', tag: 'Accès total', color: 'danger',
+      desc: "Rôle du propriétaire technique de l'outil. Cumule tous les droits, y compris ceux du référent confidentiel.",
+      can: ['Tout ce que fait un administrateur CSE, sur tous les secteurs', 'Voir les identités « confidentiel élus » (comme le référent, accès tracé)'],
+      cant: ["Voir l'identité d'une demande « anonyme total » (aucune identité n'est jamais enregistrée pour ce niveau, pour personne)"] },
+  ];
   function supaUsersUrl() {
     const m = ((PS.config && PS.config.SUPABASE_URL) || '').match(/https:\/\/([a-z0-9]+)\.supabase/);
     return m ? `https://supabase.com/dashboard/project/${m[1]}/auth/users` : 'https://supabase.com/dashboard';
@@ -681,6 +699,20 @@
       <div class="card card-pad">
         <h3>👥 Gestion des élus — rôles & secteurs</h3>
         <p class="hint">Attribue à chaque élu son <strong>rôle</strong> et ses <strong>secteurs</strong>. Décoche « Compte actif » pour <strong>bloquer l'accès</strong> (réversible).</p>
+
+        <details style="margin:10px 0 14px">
+          <summary style="cursor:pointer;font-weight:600;color:var(--primary-dark)">ℹ️ Détail des rôles — qui a le droit de faire quoi</summary>
+          <div style="margin-top:10px" class="stack">
+            ${ROLE_DETAILS.map(r => `
+              <div class="card-pad" style="border:1px solid var(--border);border-radius:10px">
+                <div class="row-between"><strong>${escapeHTML(r.label)}</strong>${badge(r.tag, r.color)}</div>
+                <p class="small soft" style="margin:6px 0 8px">${escapeHTML(r.desc)}</p>
+                <div class="small"><strong style="color:var(--success)">✓ Peut :</strong> ${r.can.map(escapeHTML).join(' · ')}</div>
+                ${r.cant.length ? `<div class="small" style="margin-top:4px"><strong style="color:var(--danger)">✗ Ne peut pas :</strong> ${r.cant.map(escapeHTML).join(' · ')}</div>` : ''}
+              </div>`).join('')}
+          </div>
+        </details>
+
         <div id="elus-list"><p class="muted small">Chargement…</p></div>
       </div>
 

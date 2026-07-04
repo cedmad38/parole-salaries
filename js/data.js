@@ -64,17 +64,6 @@
     return api().onAuthStateChange(cb);
   }
 
-  // Aide de connexion (comptes de démo)
-  function demoAccounts() {
-    if (online()) return [
-      { nom: 'Camille Roy', email: 'lecteur@demo.fr', role: 'elu_lecteur' },
-      { nom: 'Sonia Berger', email: 'gestion@demo.fr', role: 'elu_gestionnaire' },
-      { nom: 'Marc Lefèvre', email: 'referent@demo.fr', role: 'referent_confidentiel' },
-      { nom: 'Admin CSE', email: 'admin@demo.fr', role: 'admin_cse' },
-    ];
-    return store().get().users.map(u => ({ nom: u.nom, email: u.email, role: u.role }));
-  }
-
   /* ---------------- Chargement de l'instantané élus ---------------- */
   async function loadElus() {
     if (online()) {
@@ -145,7 +134,7 @@
   global.PS.data = {
     online,
     createDemande, trackByRef, trackFull, addSalariePrecision,
-    login, logout, currentSession, demoAccounts, listElus, updateElu,
+    login, logout, currentSession, listElus, updateElu,
     signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
     loadElus, demandes, demandeById, journal, etablissements, organisation, questionsReunion,
     messagesFor, actionsFor, reponsesFor, revealIdentity,
