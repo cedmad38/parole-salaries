@@ -1,5 +1,15 @@
 # Journal — Parole Salariés By Cedmad
 
+## Suppression des demandes farfelues/spam — 2026-07-04
+**Statut : en cours**
+
+- Fonction `delete_demande(uuid)` (schema.sql) : sécurité definer, réservée `admin_cse`/`super_admin`, journalisée, cascade sur les données liées. Installée dans la base live.
+- **Bug de sécurité détecté et corrigé par les tests** : `role NULL not in (...)` vaut NULL en SQL → le garde-fou ne bloquait pas un appel anonyme. Corrigé avec `if v_role is null or v_role not in (...)`. Re-test : anon **bloqué** ✓, Cedmad supprime ✓, tracé au journal sous « Cedmad » ✓.
+- Frontend : bouton « 🗑️ Supprimer la demande » sur la fiche (admin/super-admin), confirmation + toast. `super_admin` ajouté aux droits d'édition (`canEdit`). `deleteDemande` dans api.js / data.js / store.js.
+- Poussé sur GitHub → site redéployé.
+
+Note : 1 demande de test déposée par l'utilisateur via le portail live (PS-2026-4656) — conservée, à supprimer par l'utilisateur avec le nouveau bouton.
+
 ## Mise en ligne Supabase + passage en réel — 2026-07-04
 **Statut : en cours**
 
