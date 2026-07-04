@@ -1,5 +1,18 @@
 # Journal — Parole Salariés By Cedmad
 
+## Comptes élus : auto-inscription, mot de passe oublié, détail des rôles — 2026-07-04
+**Statut : en cours**
+
+- **Auto-inscription avec validation (§8)** : un élu peut créer son compte (écran « Créer un compte élu ») ; rôle par défaut `en_attente` (migration DB : défaut + contrainte + trigger). Aucun accès (RLS) tant qu'un admin ne lui attribue pas un rôle réel. Écran « compte en attente de validation » après connexion.
+- **Mot de passe oublié** : lien self-service sur l'écran de connexion (email Supabase) ; l'admin peut aussi envoyer un lien par élu ; bouton « 🔑 Mot de passe » dans la barre du haut ; écran « nouveau mot de passe » sur détection de `PASSWORD_RECOVERY`.
+- **Config Auth Supabase** : Site URL + Redirect URLs (GitHub Pages + localhost:8000).
+- **Écran de connexion** : suppression des boutons « Comptes de test » (démo). `demoAccounts()` retiré.
+- **Administration → détail des rôles** : bloc dépliable décrivant, pour chaque rôle, ce qu'il peut / ne peut pas faire (cohérent avec canEdit/canDelete/identityFor + RLS).
+- Tests locaux : régression 4/4, gestion élus 5/5. Rôle par défaut `en_attente` confirmé côté base.
+
+⚠️ Déploiement GitHub Pages en échec transitoire (« Deployment failed, try again later » côté GitHub, statut « operational » par ailleurs) : une exécution est en file et rattrapera automatiquement. L'ancienne version reste en ligne ; les nouveautés sont testables en local (serveur relancé sur :8000).
+Limite constatée : quota d'emails de Supabase (SMTP intégré) très bas (429 over_email_send_rate_limit) → prévoir un SMTP dédié pour un usage réel des emails (réinitialisation / confirmation).
+
 ## Gestion des élus, refresh, cache & retouches — 2026-07-04
 **Statut : en cours**
 
