@@ -37,6 +37,7 @@ create table if not exists elus (
   id uuid primary key references auth.users(id) on delete cascade,
   org_id uuid references organisations(id),
   nom text not null default 'Élu',
+  email text,
   role text not null default 'elu_lecteur'
     check (role in ('elu_lecteur','elu_gestionnaire','referent_confidentiel','admin_cse','super_admin')),
   perimetre uuid[] not null default '{}',   -- établissements autorisés
@@ -254,10 +255,11 @@ create policy jrn_insert on journal for insert to authenticated with check (true
 create or replace function public.handle_new_elu()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.elus (id, org_id, nom)
+  insert into public.elus (id, org_id, nom, email)
   values (new.id,
           (select id from public.organisations order by created_at limit 1),
-          coalesce(new.raw_user_meta_data->>'nom', split_part(new.email, '@', 1)));
+          coalesce(new.raw_user_meta_data->>'nom', split_part(new.email, '@', 1)),
+          new.email);
   return new;
 end $$;
 drop trigger if exists on_auth_user_created on auth.users;

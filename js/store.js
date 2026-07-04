@@ -354,10 +354,24 @@
   function login(email, pass) {
     const db = get();
     const u = db.users.find(x => x.email.toLowerCase() === (email || '').toLowerCase() && x.pass === pass);
-    if (!u) return null;
+    if (!u || u.actif === false) return null;
     log(db, 'Connexion espace élus', { user: u.nom, detail: ROLES[u.role].label });
     save(db);
     return { id: u.id, nom: u.nom, role: u.role, perimetre: u.perimetre, email: u.email };
+  }
+  function listElus() {
+    return get().users.map(u => ({ id: u.id, nom: u.nom, email: u.email, role: u.role, perimetre: u.perimetre || [], actif: u.actif !== false }));
+  }
+  function updateElu(id, patch, actor) {
+    const db = get();
+    const u = db.users.find(x => x.id === id);
+    if (!u) return;
+    if ('role' in patch) u.role = patch.role;
+    if ('perimetre' in patch) u.perimetre = patch.perimetre;
+    if ('actif' in patch) u.actif = patch.actif;
+    if ('nom' in patch) u.nom = patch.nom;
+    log(db, 'Élu mis à jour', { user: actor || 'admin', detail: patch.role || '' });
+    save(db);
   }
 
   /* ---------------- Données de démonstration (§18) ------------- */
@@ -440,7 +454,7 @@
     // salarié
     createDemande, trackByRef, trackFull, addSalariePrecision,
     // élus
-    login, updateDemande, addEluMessage, messagesFor, piecesFor, identityFor,
+    login, listElus, updateElu, updateDemande, addEluMessage, messagesFor, piecesFor, identityFor,
     mergeDemandes, deleteDemande, addReponseDirection, addAction, actionsFor, reponsesFor,
     addQuestionReunion, questionsReunion, stats,
     // helpers

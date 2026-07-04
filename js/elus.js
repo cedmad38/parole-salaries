@@ -109,6 +109,7 @@
         <div class="title">Parole Salariés<small>Espace élus</small></div>
         <div class="spacer"></div>
         <div class="who"><b>${escapeHTML(session.nom)}</b><br><span class="role-chip">${escapeHTML(store.ROLES[session.role].label)}</span></div>
+        <button class="btn btn-ghost btn-sm" id="refresh" type="button" title="Voir les nouvelles demandes" style="color:#fff;border-color:rgba(255,255,255,.25)">↻ Actualiser</button>
         <button class="btn btn-ghost btn-sm" id="logout" type="button" style="color:#fff;border-color:rgba(255,255,255,.25)">Quitter</button>
       </div>
       <div class="elus-shell">
@@ -126,6 +127,11 @@
     shell.querySelector('#logout').onclick = async () => {
       await data.logout(); session = null; PS.session = null;
       try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {} renderLogin();
+    };
+    shell.querySelector('#refresh').onclick = async () => {
+      const b = shell.querySelector('#refresh'); b.disabled = true; b.textContent = '…';
+      try { await reload(); toast('Liste actualisée.'); } catch (e) { toast('Actualisation impossible.', 'err'); }
+      render();
     };
     shell.querySelector('#content').appendChild(contentNode);
     const r = appRoot(); r.innerHTML = ''; r.appendChild(shell);
@@ -492,23 +498,66 @@
   }
 
   /* ======================= ADMINISTRATION ======================= */
-  function viewAdmin() {
+  function supaUsersUrl() {
+    const m = ((PS.config && PS.config.SUPABASE_URL) || '').match(/https:\/\/([a-z0-9]+)\.supabase/);
+    return m ? `https://supabase.com/dashboard/project/${m[1]}/auth/users` : 'https://supabase.com/dashboard';
+  }
+  function eluRow(u, etabs) {
+    const row = el('div', { class: 'card-pad', style: 'border:1px solid var(--border);border-radius:12px;margin-bottom:10px;background:var(--surface)' });
+    const self = u.id === session.id;
+    row.innerHTML = `
+      <div class="row-between"><strong>${escapeHTML(u.nom || '—')}${self ? ' <span class="badge badge-primary">vous</span>' : ''}</strong>
+        <span class="small muted">${escapeHTML(u.email || '')}</span></div>
+      <div class="row" style="margin-top:8px;align-items:flex-end;gap:14px">
+        <div class="field" style="margin:0;min-width:190px"><label class="small">Rôle (statut)</label>
+          <select data-role>${Object.entries(store.ROLES).map(([k, v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
+        <label class="small" style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" data-actif ${u.actif !== false ? 'checked' : ''} style="width:auto"> Compte actif</label>
+      </div>
+      <div style="margin-top:10px"><div class="small muted" style="margin-bottom:4px">Secteurs autorisés :</div>
+        <div class="pill-list" data-sect>${etabs.map(e => `<label class="badge" style="cursor:pointer;font-weight:400"><input type="checkbox" value="${e.id}" ${(u.perimetre || []).includes(e.id) ? 'checked' : ''} style="width:auto;margin-right:5px">${escapeHTML(e.nom)}</label>`).join('') || '<span class="small muted">Aucun secteur.</span>'}</div>
+        <div class="hint">Admin & super-admin voient tout, quels que soient les secteurs.</div></div>
+      <div class="row" style="margin-top:10px"><button class="btn btn-primary btn-sm" data-save type="button">Enregistrer</button></div>`;
+    row.querySelector('[data-save]').onclick = async () => {
+      const role = row.querySelector('[data-role]').value;
+      const actif = row.querySelector('[data-actif]').checked;
+      const perimetre = Array.from(row.querySelectorAll('[data-sect] input:checked')).map(i => i.value);
+      if (self && (!actif || (session.role !== 'elu_lecteur' && role === 'elu_lecteur'))) {
+        if (!confirm("Attention : vous modifiez VOTRE propre compte. Vous pourriez perdre vos droits. Continuer ?")) return;
+      }
+      const btn = row.querySelector('[data-save]'); btn.disabled = true; btn.textContent = '…';
+      try { await data.updateElu(u.id, { role, actif, perimetre }, session.nom); toast('Élu mis à jour.'); }
+      catch (e) { toast('Mise à jour impossible' + (e && e.message ? ' : ' + e.message : '') + '.', 'err'); }
+      btn.disabled = false; btn.textContent = 'Enregistrer';
+    };
+    return row;
+  }
+  async function viewAdmin() {
     const org = data.organisation();
     const box = el('div');
     box.innerHTML = `
       <h1>Administration</h1>
-      <p class="page-sub">Paramètres de l'organisation, protection des données, jeu de démonstration.</p>
+      <p class="page-sub">Gestion des élus, des comptes, des paramètres et des données.</p>
+
       <div class="card card-pad">
+        <h3>👥 Gestion des élus — rôles & secteurs</h3>
+        <p class="hint">Attribue à chaque élu son <strong>rôle</strong> et ses <strong>secteurs</strong>. Décoche « Compte actif » pour <strong>bloquer l'accès</strong> (réversible).</p>
+        <div id="elus-list"><p class="muted small">Chargement…</p></div>
+      </div>
+
+      <div class="card card-pad" style="margin-top:12px">
+        <h3>🔐 Comptes de connexion</h3>
+        <p class="hint">Créer un compte, le <strong>supprimer définitivement</strong> ou <strong>réinitialiser un mot de passe</strong> se fait dans Supabase (le plus sécurisé). Le rôle se règle ensuite ci-dessus.</p>
+        ${data.online() ? `<a class="btn btn-ghost btn-sm" href="${supaUsersUrl()}" target="_blank" rel="noopener">Ouvrir la gestion des comptes Supabase ↗</a>` : '<p class="muted small">Mode local : comptes de démonstration.</p>'}
+      </div>
+
+      <div class="card card-pad" style="margin-top:12px">
         <h3>Protection des statistiques</h3>
         <div class="field"><label for="seuil">Seuil anti-réidentification (§6.2)</label><input id="seuil" type="number" min="1" max="50" value="${org.seuilAnonymat}"></div>
         <div class="field"><label for="cons">Durée de conservation (jours)</label><input id="cons" type="number" min="30" value="${org.conservationJours}"></div>
         <button class="btn btn-primary btn-sm" id="save-org" type="button">Enregistrer</button>
-        ${data.online() ? '<p class="hint" style="margin-top:8px">En ligne : ces paramètres se modifient aussi directement dans Supabase (table organisations).</p>' : ''}
+        ${data.online() ? '<p class="hint" style="margin-top:8px">En ligne : ces paramètres se modifient dans Supabase (table organisations).</p>' : ''}
       </div>
-      <div class="card card-pad" style="margin-top:12px">
-        <h3>Comptes élus (§8)</h3>
-        ${data.demoAccounts().map(u => `<div class="row-between" style="padding:6px 0;border-bottom:1px solid var(--border)"><span>${escapeHTML(u.nom)} <span class="muted small">${escapeHTML(u.email)}</span></span>${badge(store.ROLES[u.role].label, 'mute')}</div>`).join('')}
-      </div>
+
       <div class="card card-pad" style="margin-top:12px">
         <h3>Données</h3>
         <div class="row">
@@ -531,6 +580,14 @@
     const rb = box.querySelector('#reset');
     if (rb) rb.onclick = async () => { if (!confirm('Réinitialiser toutes les données locales de démonstration ?')) return; store.resetDemo(); await reload(); toast('Jeu de démo réinitialisé.'); state.view = 'dashboard'; render(); };
     renderShell(box);
+    const host = box.querySelector('#elus-list');
+    try {
+      const elus = await data.listElus();
+      const etabs = data.etablissements();
+      host.innerHTML = '';
+      if (!elus.length) host.innerHTML = '<p class="muted small">Aucun élu trouvé.</p>';
+      elus.forEach(u => host.appendChild(eluRow(u, etabs)));
+    } catch (e) { host.innerHTML = '<p class="muted small">Impossible de charger les élus.</p>'; }
   }
 
   /* ======================= ROUTEUR ======================= */

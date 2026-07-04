@@ -1,5 +1,5 @@
 /* Parole Salariés By Cedmad — Service worker (PWA offline shell) */
-const CACHE = 'parole-salaries-v3';
+const CACHE = 'parole-salaries-v5';
 const ASSETS = [
   'index.html', 'elus.html',
   'css/styles.css', 'css/portal.css', 'css/elus.css',
@@ -21,10 +21,16 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Cache-first pour la coque de l'app ; réseau sinon
+// RÉSEAU D'ABORD : on récupère toujours la dernière version en ligne, et on
+// met le cache à jour au passage. Repli sur le cache uniquement hors ligne.
+// (Évite le problème « je ne vois pas la mise à jour » dû à un cache figé.)
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request).catch(() => cached))
+    fetch(e.request).then((resp) => {
+      const copy = resp.clone();
+      caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+      return resp;
+    }).catch(() => caches.match(e.request))
   );
 });

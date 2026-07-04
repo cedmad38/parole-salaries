@@ -59,7 +59,7 @@
   }
   async function sessionFromUser(user) {
     const { data: elu } = await db().from('elus').select('*').eq('id', user.id).single();
-    if (!elu) return null;
+    if (!elu || elu.actif === false) return null;   // compte désactivé => accès refusé
     return { id: user.id, nom: elu.nom, role: elu.role, perimetre: elu.perimetre || [], email: user.email };
   }
   async function currentSession() {
@@ -68,6 +68,22 @@
     return sessionFromUser(data.user);
   }
   async function logout() { await db().auth.signOut(); }
+
+  // Gestion des élus (admin) — la RLS n'autorise que les admins
+  async function listElus() {
+    const { data } = await db().from('elus').select('id,nom,email,role,perimetre,actif').order('nom');
+    return (data || []).map(e => ({ id: e.id, nom: e.nom, email: e.email, role: e.role, perimetre: e.perimetre || [], actif: e.actif !== false }));
+  }
+  async function updateElu(id, patch) {
+    const row = {};
+    if ('role' in patch) row.role = patch.role;
+    if ('perimetre' in patch) row.perimetre = patch.perimetre;
+    if ('actif' in patch) row.actif = patch.actif;
+    if ('nom' in patch) row.nom = patch.nom;
+    const { error } = await db().from('elus').update(row).eq('id', id);
+    if (error) throw error;
+    await logAction('Élu mis à jour', { detail: (patch.role || '') + (patch.actif === false ? ' · désactivé' : '') });
+  }
 
   /* ---------------- Lecture / écriture élus ---------------- */
   const mapRow = (r) => ({
@@ -201,7 +217,7 @@
   global.PS.api = {
     init, online: true,
     createDemande, trackByRef, trackFull, addSalariePrecision,
-    login, logout, currentSession,
+    login, logout, currentSession, listElus, updateElu,
     getDemandes, getDemande, updateDemande, addEluMessage, messagesFor, piecesFor,
     revealIdentity, mergeDemandes, deleteDemande, addReponseDirection, addAction, actionsFor, reponsesFor,
     messagesAll, actionsAll, reponsesAll,

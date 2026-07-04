@@ -43,6 +43,8 @@
   async function login(email, pass)  { return online() ? api().login(email, pass) : store().login(email, pass); }
   async function logout()            { if (online()) await api().logout(); }
   async function currentSession()    { return online() ? api().currentSession() : null; }
+  async function listElus()          { return online() ? api().listElus() : store().listElus(); }
+  async function updateElu(id, patch, actor) { return online() ? api().updateElu(id, patch) : store().updateElu(id, patch, actor); }
 
   // Aide de connexion (comptes de démo)
   function demoAccounts() {
@@ -125,7 +127,7 @@
   global.PS.data = {
     online,
     createDemande, trackByRef, trackFull, addSalariePrecision,
-    login, logout, currentSession, demoAccounts,
+    login, logout, currentSession, demoAccounts, listElus, updateElu,
     loadElus, demandes, demandeById, journal, etablissements, organisation, questionsReunion,
     messagesFor, actionsFor, reponsesFor, revealIdentity,
     updateDemande, addEluMessage, addReponseDirection, addAction, addQuestionReunion, mergeDemandes, deleteDemande,
