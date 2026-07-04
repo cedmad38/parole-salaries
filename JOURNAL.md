@@ -11,7 +11,8 @@
 - Tests locaux : régression 4/4, gestion élus 5/5. Rôle par défaut `en_attente` confirmé côté base.
 
 ✅ Déploiement GitHub Pages RÉSOLU : la file était bloquée (runs coincés en « queued » ~30 min, côté GitHub — pas notre code). Débloqué en annulant les runs coincés puis en repoussant : le run frais a réussi en ~40 s. Site public à jour et vérifié (détail des rôles, comptes démo retirés, auto-inscription, mot de passe oublié, bouton supprimer, SW v5).
-Limite constatée : quota d'emails de Supabase (SMTP intégré) très bas (429 over_email_send_rate_limit) → prévoir un SMTP dédié pour un usage réel des emails (réinitialisation / confirmation).
+Limite emails Supabase (SMTP intégré) : **2 emails/h** (verrouillé, lu sur la page Rate Limits). Résolu pour l'inscription : **« Confirm email » désactivé** dans Supabase → l'auto-inscription n'envoie plus d'email (inscriptions illimitées) ; la validation admin par attribution de rôle reste le contrôle de sécurité. Message d'inscription de l'app mis à jour en conséquence.
+Reste limité par le quota 2/h : le « mot de passe oublié » (rare ; sinon reset par l'admin dans Supabase, 0 email). Pour un usage à grande échelle des emails → brancher un SMTP dédié gratuit (Brevo/Resend).
 
 ## Gestion des élus, refresh, cache & retouches — 2026-07-04
 **Statut : en cours**
