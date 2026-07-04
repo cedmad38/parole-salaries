@@ -46,6 +46,24 @@
   async function listElus()          { return online() ? api().listElus() : store().listElus(); }
   async function updateElu(id, patch, actor) { return online() ? api().updateElu(id, patch) : store().updateElu(id, patch, actor); }
 
+  // Auto-inscription, mot de passe oublié / réinitialisation — nécessitent la base en ligne (email)
+  async function signUp(email, pass, nom) {
+    if (!online()) throw new Error("Fonction disponible uniquement en mode en ligne.");
+    return api().signUp(email, pass, nom);
+  }
+  async function resetPasswordForEmail(email, redirectTo) {
+    if (!online()) throw new Error("Fonction disponible uniquement en mode en ligne.");
+    return api().resetPasswordForEmail(email, redirectTo);
+  }
+  async function updatePassword(newPassword) {
+    if (!online()) throw new Error("Fonction disponible uniquement en mode en ligne.");
+    return api().updatePassword(newPassword);
+  }
+  function onAuthStateChange(cb) {
+    if (!online()) return { data: { subscription: { unsubscribe() {} } } };
+    return api().onAuthStateChange(cb);
+  }
+
   // Aide de connexion (comptes de démo)
   function demoAccounts() {
     if (online()) return [
@@ -128,6 +146,7 @@
     online,
     createDemande, trackByRef, trackFull, addSalariePrecision,
     login, logout, currentSession, demoAccounts, listElus, updateElu,
+    signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
     loadElus, demandes, demandeById, journal, etablissements, organisation, questionsReunion,
     messagesFor, actionsFor, reponsesFor, revealIdentity,
     updateDemande, addEluMessage, addReponseDirection, addAction, addQuestionReunion, mergeDemandes, deleteDemande,

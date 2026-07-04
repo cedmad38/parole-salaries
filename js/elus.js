@@ -46,10 +46,17 @@
         <div class="field"><label for="email">Identifiant</label><input id="email" type="text" autocapitalize="none" autocomplete="username" placeholder="Cedmad ou email"></div>
         <div class="field"><label for="pass">Mot de passe</label><input id="pass" type="password" placeholder="••••••••"></div>
         <button class="btn btn-primary btn-block" id="login-btn" type="button">Se connecter</button>
+        ${data.online() ? `
+        <div class="row-between small" style="margin-top:10px">
+          <a href="#" id="link-forgot">Mot de passe oublié ?</a>
+          <a href="#" id="link-signup">Créer un compte élu</a>
+        </div>` : ''}
         <div class="notice ${data.online() ? 'notice-success' : 'notice-info'}" style="margin-top:14px"><span class="ico">${data.online() ? '🟢' : '🔐'}</span><div class="small">${data.online() ? 'Mode en ligne (base Supabase sécurisée).' : 'Mode local (démo). Renseignez js/config.js pour la base partagée.'}</div></div>
         <div class="demo-accounts"><p class="small muted" style="margin:14px 0 6px">Comptes de test (mot de passe : <code>demo1234</code>) :</p></div>
       </div>
       <p class="center small muted" style="margin-top:14px"><a href="index.html">← Portail salarié</a></p>`;
+    const lf = box.querySelector('#link-forgot'); if (lf) lf.onclick = (e) => { e.preventDefault(); renderForgot(); };
+    const ls = box.querySelector('#link-signup'); if (ls) ls.onclick = (e) => { e.preventDefault(); renderSignup(); };
     const da = box.querySelector('.demo-accounts');
     data.demoAccounts().forEach(u => {
       da.appendChild(el('button', { class: 'btn btn-ghost btn-sm', type: 'button',
@@ -67,6 +74,7 @@
         if (!u) { toast('Identifiants incorrects.', 'err'); btn.disabled = false; btn.textContent = 'Se connecter'; return; }
         session = u; PS.session = u;
         try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(u)); } catch (e) {}
+        if (u.role === 'en_attente') { renderPending(); return; }
         await reload();
         state.view = 'dashboard'; render();
       } catch (e) {
@@ -75,6 +83,118 @@
     };
     box.querySelector('#login-btn').onclick = doLogin;
     box.querySelector('#pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    const r = appRoot(); r.innerHTML = ''; r.appendChild(box);
+  }
+
+  /* ======================= COMPTE EN ATTENTE DE VALIDATION ======================= */
+  function renderPending() {
+    const box = el('div', { class: 'login-wrap' });
+    box.innerHTML = `
+      <div class="login-card center">
+        <div class="brand"><img src="assets/logo.png" alt="Logo Parole Salariés By Cedmad"></div>
+        <div style="font-size:2rem;margin:6px 0">⏳</div>
+        <h1 style="font-size:1.15rem">Compte en attente de validation</h1>
+        <p class="muted small">Bonjour ${escapeHTML((session && session.nom) || '')}, votre compte a bien été créé mais doit être <strong>validé par un administrateur</strong> avant de pouvoir accéder à l'espace élus. Vous serez informé·e une fois activé.</p>
+        <button class="btn btn-ghost btn-block" id="logout-pending" type="button" style="margin-top:14px">Se déconnecter</button>
+      </div>
+      <p class="center small muted" style="margin-top:14px"><a href="index.html">← Portail salarié</a></p>`;
+    box.querySelector('#logout-pending').onclick = async () => {
+      await data.logout(); session = null; PS.session = null;
+      try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {} renderLogin();
+    };
+    const r = appRoot(); r.innerHTML = ''; r.appendChild(box);
+  }
+
+  /* ======================= MOT DE PASSE OUBLIÉ (auto-service) ======================= */
+  function renderForgot() {
+    const box = el('div', { class: 'login-wrap' });
+    box.innerHTML = `
+      <div class="login-card">
+        <div class="brand"><img src="assets/logo.png" alt="Logo Parole Salariés By Cedmad">
+          <h1 style="margin:10px 0 2px;font-size:1.2rem">Mot de passe oublié</h1>
+          <p class="muted small mt-0">Recevez par email un lien pour choisir un nouveau mot de passe.</p></div>
+        <div class="field"><label for="femail">Votre email</label><input id="femail" type="email" placeholder="vous@exemple.fr"></div>
+        <button class="btn btn-primary btn-block" id="send-reset" type="button">Envoyer le lien</button>
+        <button class="btn btn-ghost btn-block" id="back-login" type="button" style="margin-top:8px">← Retour à la connexion</button>
+      </div>`;
+    box.querySelector('#send-reset').onclick = async () => {
+      const email = box.querySelector('#femail').value.trim();
+      if (!email) { toast('Indiquez votre email.', 'err'); return; }
+      const btn = box.querySelector('#send-reset'); btn.disabled = true; btn.textContent = 'Envoi…';
+      try {
+        await data.resetPasswordForEmail(email, location.origin + location.pathname);
+        box.querySelector('.login-card').innerHTML = `
+          <div class="notice notice-success"><span class="ico">📩</span><div>Si un compte existe pour <strong>${escapeHTML(email)}</strong>, un email vient d'être envoyé avec un lien de réinitialisation.</div></div>
+          <button class="btn btn-ghost btn-block" id="back-login2" type="button" style="margin-top:14px">← Retour à la connexion</button>`;
+        box.querySelector('#back-login2').onclick = renderLogin;
+      } catch (e) { toast('Envoi impossible.', 'err'); btn.disabled = false; btn.textContent = 'Envoyer le lien'; }
+    };
+    box.querySelector('#back-login').onclick = renderLogin;
+    const r = appRoot(); r.innerHTML = ''; r.appendChild(box);
+  }
+
+  /* ======================= CRÉER UN COMPTE (auto-inscription §8) ======================= */
+  function renderSignup() {
+    const box = el('div', { class: 'login-wrap' });
+    box.innerHTML = `
+      <div class="login-card">
+        <div class="brand"><img src="assets/logo.png" alt="Logo Parole Salariés By Cedmad">
+          <h1 style="margin:10px 0 2px;font-size:1.2rem">Créer un compte élu</h1>
+          <p class="muted small mt-0">Votre compte restera <strong>en attente</strong> jusqu'à validation par un administrateur.</p></div>
+        <div class="field"><label for="snom">Nom</label><input id="snom" type="text" placeholder="Prénom Nom"></div>
+        <div class="field"><label for="semail">Email</label><input id="semail" type="email" placeholder="vous@exemple.fr"></div>
+        <div class="field"><label for="spass">Mot de passe</label><input id="spass" type="password" placeholder="8 caractères minimum"></div>
+        <div class="field"><label for="spass2">Confirmer le mot de passe</label><input id="spass2" type="password"></div>
+        <button class="btn btn-primary btn-block" id="do-signup" type="button">Créer mon compte</button>
+        <button class="btn btn-ghost btn-block" id="back-login" type="button" style="margin-top:8px">← Retour à la connexion</button>
+      </div>`;
+    box.querySelector('#do-signup').onclick = async () => {
+      const nom = box.querySelector('#snom').value.trim();
+      const email = box.querySelector('#semail').value.trim();
+      const p1 = box.querySelector('#spass').value, p2 = box.querySelector('#spass2').value;
+      if (!nom || !email || !p1) { toast('Merci de remplir tous les champs.', 'err'); return; }
+      if (p1.length < 8) { toast('Le mot de passe doit faire au moins 8 caractères.', 'err'); return; }
+      if (p1 !== p2) { toast('Les mots de passe ne correspondent pas.', 'err'); return; }
+      const btn = box.querySelector('#do-signup'); btn.disabled = true; btn.textContent = 'Création…';
+      try {
+        await data.signUp(email, p1, nom);
+        box.querySelector('.login-card').innerHTML = `
+          <div class="notice notice-info"><span class="ico">📩</span><div>Compte créé pour <strong>${escapeHTML(nom)}</strong>. Confirmez d'abord votre adresse via l'email qui vient de vous être envoyé, puis votre compte restera <strong>en attente de validation</strong> par un administrateur avant de pouvoir accéder à l'espace élus.</div></div>
+          <button class="btn btn-ghost btn-block" id="back-login2" type="button" style="margin-top:14px">← Retour à la connexion</button>`;
+        box.querySelector('#back-login2').onclick = renderLogin;
+      } catch (e) {
+        toast('Création impossible' + (e && e.message ? ' : ' + e.message : '') + '.', 'err');
+        btn.disabled = false; btn.textContent = 'Créer mon compte';
+      }
+    };
+    box.querySelector('#back-login').onclick = renderLogin;
+    const r = appRoot(); r.innerHTML = ''; r.appendChild(box);
+  }
+
+  /* ======================= NOUVEAU MOT DE PASSE (après lien reçu par email) ======================= */
+  function renderResetPassword() {
+    const box = el('div', { class: 'login-wrap' });
+    box.innerHTML = `
+      <div class="login-card">
+        <div class="brand"><img src="assets/logo.png" alt="Logo Parole Salariés By Cedmad">
+          <h1 style="margin:10px 0 2px;font-size:1.2rem">Nouveau mot de passe</h1></div>
+        <div class="field"><label for="npass">Nouveau mot de passe</label><input id="npass" type="password" placeholder="8 caractères minimum"></div>
+        <div class="field"><label for="npass2">Confirmer</label><input id="npass2" type="password"></div>
+        <button class="btn btn-primary btn-block" id="do-reset" type="button">Enregistrer le mot de passe</button>
+      </div>`;
+    box.querySelector('#do-reset').onclick = async () => {
+      const p1 = box.querySelector('#npass').value, p2 = box.querySelector('#npass2').value;
+      if (p1.length < 8) { toast('8 caractères minimum.', 'err'); return; }
+      if (p1 !== p2) { toast('Les mots de passe ne correspondent pas.', 'err'); return; }
+      const btn = box.querySelector('#do-reset'); btn.disabled = true; btn.textContent = 'Enregistrement…';
+      try {
+        await data.updatePassword(p1);
+        toast('Mot de passe mis à jour. Reconnectez-vous.');
+        await data.logout(); session = null; PS.session = null;
+        try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+        renderLogin();
+      } catch (e) { toast('Erreur : ' + (e && e.message ? e.message : ''), 'err'); btn.disabled = false; btn.textContent = 'Enregistrer le mot de passe'; }
+    };
     const r = appRoot(); r.innerHTML = ''; r.appendChild(box);
   }
 
@@ -110,6 +230,7 @@
         <div class="spacer"></div>
         <div class="who"><b>${escapeHTML(session.nom)}</b><br><span class="role-chip">${escapeHTML(store.ROLES[session.role].label)}</span></div>
         <button class="btn btn-ghost btn-sm" id="refresh" type="button" title="Voir les nouvelles demandes" style="color:#fff;border-color:rgba(255,255,255,.25)">↻ Actualiser</button>
+        ${data.online() ? `<button class="btn btn-ghost btn-sm" id="my-password" type="button" title="Recevoir un lien pour changer mon mot de passe" style="color:#fff;border-color:rgba(255,255,255,.25)">🔑 Mot de passe</button>` : ''}
         <button class="btn btn-ghost btn-sm" id="logout" type="button" style="color:#fff;border-color:rgba(255,255,255,.25)">Quitter</button>
       </div>
       <div class="elus-shell">
@@ -132,6 +253,14 @@
       const b = shell.querySelector('#refresh'); b.disabled = true; b.textContent = '…';
       try { await reload(); toast('Liste actualisée.'); } catch (e) { toast('Actualisation impossible.', 'err'); }
       render();
+    };
+    const pwBtn = shell.querySelector('#my-password');
+    if (pwBtn) pwBtn.onclick = async () => {
+      if (!session.email) { toast('Email introuvable pour ce compte.', 'err'); return; }
+      pwBtn.disabled = true;
+      try { await data.resetPasswordForEmail(session.email, location.origin + location.pathname); toast('Email envoyé à ' + session.email + '. Suivez le lien pour choisir un nouveau mot de passe.'); }
+      catch (e) { toast('Envoi impossible.', 'err'); }
+      pwBtn.disabled = false;
     };
     shell.querySelector('#content').appendChild(contentNode);
     const r = appRoot(); r.innerHTML = ''; r.appendChild(shell);
@@ -503,20 +632,31 @@
     return m ? `https://supabase.com/dashboard/project/${m[1]}/auth/users` : 'https://supabase.com/dashboard';
   }
   function eluRow(u, etabs) {
-    const row = el('div', { class: 'card-pad', style: 'border:1px solid var(--border);border-radius:12px;margin-bottom:10px;background:var(--surface)' });
+    const pending = u.role === 'en_attente';
+    const row = el('div', { class: 'card-pad', style: `border:1px solid ${pending ? 'var(--warn)' : 'var(--border)'};border-radius:12px;margin-bottom:10px;background:${pending ? 'var(--warn-soft)' : 'var(--surface)'}` });
     const self = u.id === session.id;
     row.innerHTML = `
-      <div class="row-between"><strong>${escapeHTML(u.nom || '—')}${self ? ' <span class="badge badge-primary">vous</span>' : ''}</strong>
+      <div class="row-between"><strong>${escapeHTML(u.nom || '—')}${self ? ' <span class="badge badge-primary">vous</span>' : ''}${pending ? ' ' + badge('En attente de validation', 'warn') : ''}</strong>
         <span class="small muted">${escapeHTML(u.email || '')}</span></div>
       <div class="row" style="margin-top:8px;align-items:flex-end;gap:14px">
         <div class="field" style="margin:0;min-width:190px"><label class="small">Rôle (statut)</label>
-          <select data-role>${Object.entries(store.ROLES).map(([k, v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
+          <select data-role>${Object.entries(store.ROLES).filter(([k]) => k !== 'salarie').map(([k, v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
         <label class="small" style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" data-actif ${u.actif !== false ? 'checked' : ''} style="width:auto"> Compte actif</label>
       </div>
       <div style="margin-top:10px"><div class="small muted" style="margin-bottom:4px">Secteurs autorisés :</div>
         <div class="pill-list" data-sect>${etabs.map(e => `<label class="badge" style="cursor:pointer;font-weight:400"><input type="checkbox" value="${e.id}" ${(u.perimetre || []).includes(e.id) ? 'checked' : ''} style="width:auto;margin-right:5px">${escapeHTML(e.nom)}</label>`).join('') || '<span class="small muted">Aucun secteur.</span>'}</div>
         <div class="hint">Admin & super-admin voient tout, quels que soient les secteurs.</div></div>
-      <div class="row" style="margin-top:10px"><button class="btn btn-primary btn-sm" data-save type="button">Enregistrer</button></div>`;
+      <div class="row" style="margin-top:10px">
+        <button class="btn btn-primary btn-sm" data-save type="button">Enregistrer</button>
+        ${data.online() && u.email ? `<button class="btn btn-ghost btn-sm" data-sendreset type="button">✉️ Envoyer un lien de réinitialisation</button>` : ''}
+      </div>`;
+    const rb = row.querySelector('[data-sendreset]');
+    if (rb) rb.onclick = async () => {
+      rb.disabled = true; const orig = rb.textContent; rb.textContent = 'Envoi…';
+      try { await data.resetPasswordForEmail(u.email, location.origin + location.pathname); toast('Lien de réinitialisation envoyé à ' + u.email + '.'); }
+      catch (e) { toast('Envoi impossible.', 'err'); }
+      rb.disabled = false; rb.textContent = orig;
+    };
     row.querySelector('[data-save]').onclick = async () => {
       const role = row.querySelector('[data-role]').value;
       const actif = row.querySelector('[data-actif]').checked;
@@ -593,6 +733,7 @@
   /* ======================= ROUTEUR ======================= */
   function render() {
     if (!session) { renderLogin(); return; }
+    if (session.role === 'en_attente') { renderPending(); return; }
     switch (state.view) {
       case 'dashboard': viewDashboard(); break;
       case 'demandes': viewDemandes(); break;
@@ -612,8 +753,25 @@
       if (data.online()) { session = await data.currentSession(); }
       else { const s = sessionStorage.getItem(SESSION_KEY); if (s) session = JSON.parse(s); }
     } catch (e) { session = null; }
-    if (session) { PS.session = session; try { await reload(); } catch (e) {} }
+    if (session) {
+      PS.session = session;
+      if (session.role === 'en_attente') { renderPending(); return; }
+      try { await reload(); } catch (e) {}
+    }
     render();
   }
-  start();
+
+  // Détection du lien « réinitialiser mon mot de passe » reçu par email (Supabase
+  // place les infos dans l'URL et déclenche l'évènement PASSWORD_RECOVERY).
+  // On laisse un court délai au client pour traiter le lien avant le démarrage normal.
+  (function boot() {
+    const r = appRoot(); r.innerHTML = '<div class="login-wrap"><p class="center muted">Chargement…</p></div>';
+    let handled = false;
+    if (data.online()) {
+      data.onAuthStateChange((event) => {
+        if (event === 'PASSWORD_RECOVERY' && !handled) { handled = true; renderResetPassword(); }
+      });
+    }
+    setTimeout(() => { if (!handled) start(); }, 350);
+  })();
 })();

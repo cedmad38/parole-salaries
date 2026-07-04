@@ -38,8 +38,8 @@ create table if not exists elus (
   org_id uuid references organisations(id),
   nom text not null default 'Élu',
   email text,
-  role text not null default 'elu_lecteur'
-    check (role in ('elu_lecteur','elu_gestionnaire','referent_confidentiel','admin_cse','super_admin')),
+  role text not null default 'en_attente'
+    check (role in ('en_attente','elu_lecteur','elu_gestionnaire','referent_confidentiel','admin_cse','super_admin')),
   perimetre uuid[] not null default '{}',   -- établissements autorisés
   actif boolean not null default true,
   created_at timestamptz not null default now()

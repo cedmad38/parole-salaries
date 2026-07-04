@@ -69,6 +69,28 @@
   }
   async function logout() { await db().auth.signOut(); }
 
+  // Auto-inscription (§8) : le compte est créé avec le rôle « en_attente » par défaut
+  // (voir table elus, DEFAULT 'en_attente') — aucun accès tant qu'un admin ne l'a pas validé.
+  async function signUp(email, password, nom) {
+    const { data, error } = await db().auth.signUp({ email, password, options: { data: { nom: nom || '' } } });
+    if (error) throw error;
+    return data;
+  }
+  // Envoi d'un email de réinitialisation (auto-service ou déclenché par un admin pour un élu)
+  async function resetPasswordForEmail(email, redirectTo) {
+    const { error } = await db().auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw error;
+  }
+  // Définition du nouveau mot de passe, après avoir cliqué le lien reçu par email
+  async function updatePassword(newPassword) {
+    const { error } = await db().auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  }
+  // Écoute des évènements d'authentification (utilisé pour détecter le lien de récupération)
+  function onAuthStateChange(cb) {
+    return db().auth.onAuthStateChange((event, sess) => cb(event, sess));
+  }
+
   // Gestion des élus (admin) — la RLS n'autorise que les admins
   async function listElus() {
     const { data } = await db().from('elus').select('id,nom,email,role,perimetre,actif').order('nom');
@@ -218,6 +240,7 @@
     init, online: true,
     createDemande, trackByRef, trackFull, addSalariePrecision,
     login, logout, currentSession, listElus, updateElu,
+    signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
     getDemandes, getDemande, updateDemande, addEluMessage, messagesFor, piecesFor,
     revealIdentity, mergeDemandes, deleteDemande, addReponseDirection, addAction, actionsFor, reponsesFor,
     messagesAll, actionsAll, reponsesAll,

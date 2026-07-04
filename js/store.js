@@ -65,6 +65,7 @@
   // Rôles et droits (§8)
   const ROLES = {
     salarie:               { label: 'Salarié' },
+    en_attente:            { label: 'En attente de validation' },
     elu_lecteur:           { label: 'Élu lecteur' },
     elu_gestionnaire:      { label: 'Élu gestionnaire' },
     referent_confidentiel: { label: 'Référent confidentiel' },
