@@ -1,5 +1,18 @@
 # Journal — Parole Salariés By Cedmad
 
+## Gestion des élus, refresh, cache & retouches — 2026-07-04
+**Statut : en cours**
+
+- **Cache PWA** : passage du service worker en « réseau d'abord » (v5) → les mises à jour s'affichent immédiatement (c'était la cause du « je ne vois pas le bouton Supprimer »).
+- **Gestion des élus** (Administration) : attribuer rôle + secteurs, activer/désactiver un compte (bloque la connexion). Colonne `email` ajoutée sur `elus` + trigger + backfill. `listElus`/`updateElu` (api/data/store). Test live 3/3 (Cedmad lit, anon bloqué).
+- **Comptes** : création / suppression définitive / réinitialisation de mot de passe via lien vers Supabase Auth (le plus sûr) ; le rôle se règle dans l'app.
+- **Portail salarié** : lien « Espace élus » retiré du pied de page.
+- **Bouton « ↻ Actualiser »** dans le tableau de bord (voir les nouvelles demandes en direct).
+- `super_admin` ajouté à `canEdit`.
+- Tests locaux : gestion élus 5/5. Poussé sur GitHub, site redéployé et vérifié (marqueurs présents en ligne).
+
+⚠️ Pour voir la mise à jour côté navigateur : **recharge en forçant** (Cmd+Maj+R) une fois. Ensuite les màj suivantes s'afficheront normalement.
+
 ## Suppression des demandes farfelues/spam — 2026-07-04
 **Statut : en cours**
 
