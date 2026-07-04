@@ -402,6 +402,21 @@ begin
     'sensitive', v_conf = 'confidentiel_elus');
 end $$;
 
+-- Suppression d'une demande « farfelue » / spam — réservé admin & super-admin, journalisée
+create or replace function public.delete_demande(p_id uuid)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare v_role text; v_ref text;
+begin
+  v_role := public.elu_role();
+  if v_role not in ('admin_cse', 'super_admin') then raise exception 'Non autorisé'; end if;
+  select public_ref into v_ref from public.demandes where id = p_id;
+  if v_ref is null then return false; end if;
+  insert into public.journal (action, user_label, detail)
+  values ('Demande supprimée', coalesce(public.elu_nom(), 'élu'), v_ref);
+  delete from public.demandes where id = p_id;  -- cascade : identités, messages, pièces, etc.
+  return true;
+end $$;
+
 -- ------------------------------------------------------------------
 -- 7. DROITS D'EXÉCUTION
 -- ------------------------------------------------------------------
@@ -410,5 +425,6 @@ grant execute on function public.track_status(text)     to anon, authenticated;
 grant execute on function public.track_full(text, text)  to anon, authenticated;
 grant execute on function public.add_precision(text, text, text) to anon, authenticated;
 grant execute on function public.reveal_identity(uuid)   to authenticated;
+grant execute on function public.delete_demande(uuid)    to authenticated;
 
 -- Fin du schéma.

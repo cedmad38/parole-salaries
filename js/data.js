@@ -100,6 +100,7 @@
   async function addAction(id, action, actor)            { if (online()) await api().addAction(id, action, actor); else store().addAction(id, action, actor); delete snap._acts[id]; }
   async function addQuestionReunion(q, actor)            { return online() ? api().addQuestionReunion(q, actor) : store().addQuestionReunion(q, actor); }
   async function mergeDemandes(m, ids, actor)            { return online() ? api().mergeDemandes(m, ids, actor) : store().mergeDemandes(m, ids, actor); }
+  async function deleteDemande(id, actor)                { const r = online() ? await api().deleteDemande(id) : store().deleteDemande(id, actor); delete snap._msgs[id]; delete snap._acts[id]; delete snap._reps[id]; return r; }
 
   /* ---------------- Statistiques (depuis l'instantané) ---------------- */
   function stats() {
@@ -127,7 +128,7 @@
     login, logout, currentSession, demoAccounts,
     loadElus, demandes, demandeById, journal, etablissements, organisation, questionsReunion,
     messagesFor, actionsFor, reponsesFor, revealIdentity,
-    updateDemande, addEluMessage, addReponseDirection, addAction, addQuestionReunion, mergeDemandes,
+    updateDemande, addEluMessage, addReponseDirection, addAction, addQuestionReunion, mergeDemandes, deleteDemande,
     stats, exportAll,
   };
 })(window);

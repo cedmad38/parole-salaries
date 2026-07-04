@@ -413,6 +413,20 @@
     return db;
   }
 
+  function deleteDemande(id, actor) {
+    const db = get();
+    const d = db.demandes.find(x => x.id === id);
+    log(db, 'Demande supprimée', { user: actor || 'élu', demandeId: null, detail: d ? d.publicRef : '' });
+    db.demandes = db.demandes.filter(x => x.id !== id);
+    delete db.identites[id];
+    db.messages = db.messages.filter(m => m.demandeId !== id);
+    db.pieces = db.pieces.filter(p => p.demandeId !== id);
+    db.questions = db.questions.filter(q => q.demandeId !== id);
+    db.reponses = db.reponses.filter(r => r.demandeId !== id);
+    db.actions = db.actions.filter(a => a.demandeId !== id);
+    save(db);
+    return true;
+  }
   function resetDemo() { localStorage.removeItem(KEY); return save(seed()); }
   function exportAll() { return JSON.stringify(get(), null, 2); }
 
@@ -427,7 +441,7 @@
     createDemande, trackByRef, trackFull, addSalariePrecision,
     // élus
     login, updateDemande, addEluMessage, messagesFor, piecesFor, identityFor,
-    mergeDemandes, addReponseDirection, addAction, actionsFor, reponsesFor,
+    mergeDemandes, deleteDemande, addReponseDirection, addAction, actionsFor, reponsesFor,
     addQuestionReunion, questionsReunion, stats,
     // helpers
     uid, now,

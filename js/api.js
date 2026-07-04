@@ -135,6 +135,11 @@
     await logAction('Demandes regroupées', { demandeId: masterId, detail: (ids.length + 1) + ' demandes — originaux conservés' });
     return groupe;
   }
+  async function deleteDemande(id) {
+    const { data, error } = await db().rpc('delete_demande', { p_id: id });
+    if (error) throw error;
+    return !!data;
+  }
   async function addReponseDirection(demandeId, texte, actor) {
     await db().from('reponses_direction').insert({ demande_id: demandeId, texte });
     await updateDemande(demandeId, { statut: 'Réponse reçue', _logAction: 'Réponse de la direction enregistrée' });
@@ -198,7 +203,7 @@
     createDemande, trackByRef, trackFull, addSalariePrecision,
     login, logout, currentSession,
     getDemandes, getDemande, updateDemande, addEluMessage, messagesFor, piecesFor,
-    revealIdentity, mergeDemandes, addReponseDirection, addAction, actionsFor, reponsesFor,
+    revealIdentity, mergeDemandes, deleteDemande, addReponseDirection, addAction, actionsFor, reponsesFor,
     messagesAll, actionsAll, reponsesAll,
     addQuestionReunion, questionsReunion, stats, journal, etablissements, organisation,
   };

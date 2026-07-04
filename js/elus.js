@@ -26,7 +26,8 @@
     if (!d.etablissement) return true;
     return etabNamesFor(session).includes(d.etablissement);
   }
-  function canEdit() { return ['elu_gestionnaire', 'referent_confidentiel', 'admin_cse'].includes(session.role); }
+  function canEdit() { return ['elu_gestionnaire', 'referent_confidentiel', 'admin_cse', 'super_admin'].includes(session.role); }
+  function canDelete() { return ['admin_cse', 'super_admin'].includes(session.role); }
   function visibleDemandes() {
     const ds = data.demandes();
     return data.online() ? ds : ds.filter(canSeeDemande); // en ligne : la RLS a déjà filtré
@@ -354,6 +355,10 @@
       <button class="btn btn-ghost btn-sm btn-block" id="act-save" type="button">Ajouter l'action</button>
       <hr class="divider">
       <button class="btn btn-danger btn-sm btn-block" id="a-close" type="button">Clôturer le dossier</button>
+      ${canDelete() ? `
+      <hr class="divider">
+      <button class="btn btn-danger btn-sm btn-block" id="a-delete" type="button" style="background:#8a1c14">🗑️ Supprimer la demande</button>
+      <p class="hint" style="margin-top:6px">Réservé à l'administration. Suppression <strong>définitive</strong> (spam / hors sujet), tracée dans le journal.</p>` : ''}
     </div>`;
   }
   function wireActions(box, d) {
@@ -376,6 +381,14 @@
       const motif = prompt('Motif de clôture :', 'Traité'); if (motif == null) return;
       await data.updateDemande(d.id, { statut: 'Clôturée', motifCloture: motif, _logAction: 'Dossier clôturé', _logDetail: motif }, session.nom);
       await reload(); toast('Dossier clôturé.'); render();
+    };
+    const del = q('#a-delete');
+    if (del) del.onclick = async () => {
+      if (!confirm('Supprimer DÉFINITIVEMENT cette demande ?\n\nCette action est irréversible et sera tracée dans le journal.')) return;
+      try {
+        await data.deleteDemande(d.id, session.nom);
+        await reload(); toast('Demande supprimée.'); state.view = 'demandes'; render();
+      } catch (e) { toast('Suppression impossible' + (e && e.message ? ' : ' + e.message : '') + '.', 'err'); }
     };
   }
   function renderMessages(host, demandeId) {
