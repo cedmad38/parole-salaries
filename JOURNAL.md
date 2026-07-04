@@ -16,8 +16,17 @@ Structure réelle configurée :
 - Périmètre de Cedmad = les 5 secteurs.
 - Frontend : « Établissement » relabellisé « Secteur », champ du portail transformé en liste déroulante (`config.secteurs`), libellés du tableau de bord mis à jour (Secteur / Zone-poste / Répartition par secteur).
 
-RESTE POUR ÊTRE PLEINEMENT EN LIGNE :
-- Héberger le frontend (index.html / elus.html) sur GitHub Pages (choix utilisateur) pour l'accès salarié par QR depuis leur téléphone. Aujourd'hui le frontend n'est accessible qu'en local (localhost) sur le Mac.
+Hébergement GitHub Pages — EN LIGNE :
+- Dépôt public : https://github.com/cedmad38/parole-salaries (compte cedmad38).
+- Site en ligne : https://cedmad38.github.io/parole-salaries/
+  - Portail salarié : .../index.html (accès QR, sans compte)
+  - Espace élus : .../elus.html (connexion Cedmad)
+- Vérifié : tous les fichiers servis en 200 (https), config en mode en ligne.
+- Aucun secret publié (seule la clé anon, publique par nature).
+
+⚙️ Mise à jour du site : modifier les fichiers puis `git push` → GitHub Pages redéploie automatiquement.
+
+À faire quand tu veux : activer la 2FA sur le compte Cedmad (Supabase → Authentication), définir des zones/postes plus fins si besoin.
 
 ## Compte super-administrateur « Cedmad » — 2026-07-04
 **Statut : en cours**
