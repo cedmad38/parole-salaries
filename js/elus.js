@@ -151,7 +151,7 @@
       try {
         await data.signUp(email, p1, nom);
         box.querySelector('.login-card').innerHTML = `
-          <div class="notice notice-info"><span class="ico">📩</span><div>Compte créé pour <strong>${escapeHTML(nom)}</strong>. Confirmez d'abord votre adresse via l'email qui vient de vous être envoyé, puis votre compte restera <strong>en attente de validation</strong> par un administrateur avant de pouvoir accéder à l'espace élus.</div></div>
+          <div class="notice notice-info"><span class="ico">⏳</span><div>Compte créé pour <strong>${escapeHTML(nom)}</strong>. Il est <strong>en attente de validation</strong> : un administrateur doit vous attribuer un rôle avant que vous puissiez accéder à l'espace élus.</div></div>
           <button class="btn btn-ghost btn-block" id="back-login2" type="button" style="margin-top:14px">← Retour à la connexion</button>`;
         box.querySelector('#back-login2').onclick = renderLogin;
       } catch (e) {
