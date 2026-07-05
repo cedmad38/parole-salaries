@@ -404,13 +404,13 @@ begin
     'sensitive', v_conf = 'confidentiel_elus');
 end $$;
 
--- Suppression d'une demande « farfelue » / spam — réservé admin & super-admin, journalisée
+-- Suppression d'une demande « farfelue » / spam — réservé référent, admin & super-admin, journalisée
 create or replace function public.delete_demande(p_id uuid)
 returns boolean language plpgsql security definer set search_path = public as $$
 declare v_role text; v_ref text;
 begin
   v_role := public.elu_role();
-  if v_role is null or v_role not in ('admin_cse', 'super_admin') then raise exception 'Non autorisé'; end if;
+  if v_role is null or v_role not in ('referent_confidentiel', 'admin_cse', 'super_admin') then raise exception 'Non autorisé'; end if;
   select public_ref into v_ref from public.demandes where id = p_id;
   if v_ref is null then return false; end if;
   insert into public.journal (action, user_label, detail)

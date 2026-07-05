@@ -27,7 +27,7 @@
     return etabNamesFor(session).includes(d.etablissement);
   }
   function canEdit() { return ['elu_gestionnaire', 'referent_confidentiel', 'admin_cse', 'super_admin'].includes(session.role); }
-  function canDelete() { return ['admin_cse', 'super_admin'].includes(session.role); }
+  function canDelete() { return ['referent_confidentiel', 'admin_cse', 'super_admin'].includes(session.role); }
   function visibleDemandes() {
     const ds = data.demandes();
     return data.online() ? ds : ds.filter(canSeeDemande); // en ligne : la RLS a déjà filtré
@@ -367,6 +367,7 @@
     const conf = store.CONFIDENTIALITE[d.confidentialite] || { label: d.confidentialite, color: 'mute' };
     let idAccess; try { idAccess = await data.revealIdentity(d, session.role); } catch (e) { idAccess = { visible: false, reason: 'Accès identité indisponible.' }; }
     const editable = canEdit();
+    const legalRef = PS.legal.forCategorie(d.categorie);
 
     const box = el('div');
     box.innerHTML = `
@@ -385,6 +386,15 @@
             <h3 style="margin-top:14px">Résumé <span class="badge badge-primary">généré</span></h3>
             <p>${escapeHTML(d.resume || '—')}</p>
             ${Object.keys(d.reponses || {}).length ? '<h3>Précisions recueillies</h3>' + Object.entries(d.reponses).filter(([, v]) => v).map(([k, v]) => `<p class="small"><strong>${escapeHTML((assistant.THEMES[k] || {}).theme || k)} :</strong> ${escapeHTML(v)}</p>`).join('') : ''}
+          </div>
+          <div class="card card-pad" style="border-left:3px solid var(--warn)">
+            <h3>📚 Repères juridiques <span class="badge badge-warn">à titre indicatif</span></h3>
+            <p class="hint">Informations générales pour orienter l'échange avec la direction — non exhaustif, ne remplace pas une analyse juridique. Catégorie : <strong>${escapeHTML(legalRef.categorie)}</strong>.</p>
+            <ul style="margin:8px 0 0;padding-left:20px">
+              ${legalRef.items.map(([libelle, ref]) => `<li class="small" style="margin-bottom:4px"><strong>${escapeHTML(ref)}</strong> — ${escapeHTML(libelle)}</li>`).join('')}
+            </ul>
+            ${legalRef.note ? `<p class="small soft" style="margin-top:8px">${escapeHTML(legalRef.note)}</p>` : ''}
+            <p class="hint" style="margin-top:8px">Vérifier la version en vigueur des articles ainsi que la convention collective / les accords applicables. <a href="https://www.legifrance.gouv.fr/" target="_blank" rel="noopener">Legifrance ↗</a></p>
           </div>
           <div class="card card-pad">
             <h3>💬 Assistant de formulation (§5)</h3>
@@ -633,9 +643,9 @@
       can: ['Classer, prioriser, affecter une demande', 'Échanger avec le salarié et ajouter des notes internes', 'Ajouter réponses direction / actions de suivi', 'Préparer des questions de réunion', 'Exporter (Word/PDF/copie)'],
       cant: ['Voir une identité « confidentiel élus »', 'Supprimer une demande', 'Gérer les élus ou les paramètres', 'Sortir de son périmètre (secteurs)'] },
     { role: 'referent_confidentiel', label: 'Référent confidentiel', tag: 'Identités protégées', color: 'warn',
-      desc: "Même travail qu'un gestionnaire, avec un droit supplémentaire réservé : voir les identités des demandes « confidentiel élus ». Chaque consultation est journalisée.",
-      can: ['Tout ce que fait un élu gestionnaire (dans ses secteurs)', 'Voir les identités « confidentiel élus » (accès tracé)'],
-      cant: ['Supprimer une demande', 'Gérer les élus ou les paramètres', 'Sortir de son périmètre (secteurs)'] },
+      desc: "Même travail qu'un gestionnaire, avec deux droits supplémentaires réservés : voir les identités des demandes « confidentiel élus » et supprimer les demandes farfelues/spam. Chaque action sensible est journalisée.",
+      can: ['Tout ce que fait un élu gestionnaire (dans ses secteurs)', 'Voir les identités « confidentiel élus » (accès tracé)', 'Supprimer une demande (spam/hors sujet), action journalisée'],
+      cant: ['Gérer les élus ou les paramètres', 'Sortir de son périmètre (secteurs)'] },
     { role: 'admin_cse', label: 'Administrateur CSE', tag: 'Administration', color: 'primary',
       desc: "Gère l'outil pour toute l'organisation : tous les secteurs, sans restriction de périmètre.",
       can: ['Tout ce que fait un élu gestionnaire, sur TOUS les secteurs', 'Supprimer une demande (spam/hors sujet), action journalisée', 'Gérer les élus : rôle, secteurs, activer/désactiver un compte', 'Réinitialiser le mot de passe d\'un élu', 'Modifier les paramètres (seuil anti-réidentification, conservation)'],

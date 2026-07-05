@@ -1,5 +1,13 @@
 # Journal — Parole Salariés By Cedmad
 
+## Suppression étendue au référent + repères juridiques par demande — 2026-07-05
+**Statut : en cours**
+
+- **Suppression des demandes farfelues étendue au référent confidentiel** (en plus d'admin/super-admin) : `canDelete()` (elus.js) + fonction `delete_demande` (schema.sql, migrée en live) + bloc « Détail des rôles » mis à jour. Testé en conditions réelles : le référent supprime ✅, l'élu gestionnaire reste bloqué ✅ (5/5).
+- **Nouveau module `js/legal.js`** : repères du Code du travail (et Code pénal ponctuellement) par catégorie de demande — références écrites à la main (jamais générées/inventées), avec avertissement systématique « à titre indicatif, non exhaustif, ne remplace pas une analyse juridique » (cohérent avec les garde-fous §5.3/§9). Nouvelle carte « 📚 Repères juridiques » dans la fiche demande, entre le texte original et l'assistant de formulation. Testé : 17/17 catégories couvertes (dont génériques CSE/CSSCT/Autre).
+- Découverte en testant : **2 vrais élus se sont déjà auto-inscrits** via la fonctionnalité (david.contet72@gmail.com, o.enrique38@gmail.com) — comptes en attente de validation, à traiter par l'utilisateur dans Administration → Gestion des élus.
+- Nettoyage : 5 comptes de test créés pour la vérification supprimés via le dashboard Supabase (les 2 vrais comptes élus et 1 demande de test de l'utilisateur non touchés).
+
 ## Comptes élus : auto-inscription, mot de passe oublié, détail des rôles — 2026-07-04
 **Statut : en cours**
 
