@@ -1,5 +1,10 @@
 # Journal — Parole Salariés By Cedmad
 
+## Rôle super-administrateur verrouillé — 2026-07-05
+**Statut : en cours**
+
+Dans Administration → Gestion des élus, le rôle **super-administrateur** est désormais **verrouillé** : sélecteur désactivé, figé sur « Super-administrateur technique » pour tout compte ayant ce rôle (aujourd'hui : Cedmad, seul concerné). Effet de bord voulu : ce rôle a aussi été retiré des options proposées pour les AUTRES élus — impossible de promouvoir quelqu'un « super-admin » depuis cette interface (seule la procédure manuelle documentée dans `supabase/superadmin.sql` le permet). Protège contre une démotion ou une promotion accidentelle. Vérifié dans le navigateur : sélecteur `disabled`, une seule option pour Cedmad ; option `super_admin` absente pour les autres élus.
+
 ## Adaptation mobile (espace élus + portail) — 2026-07-05
 **Statut : en cours**
 

@@ -663,6 +663,7 @@
   }
   function eluRow(u, etabs) {
     const pending = u.role === 'en_attente';
+    const roleLocked = u.role === 'super_admin';
     const row = el('div', { class: 'card-pad', style: `border:1px solid ${pending ? 'var(--warn)' : 'var(--border)'};border-radius:12px;margin-bottom:10px;background:${pending ? 'var(--warn-soft)' : 'var(--surface)'}` });
     const self = u.id === session.id;
     row.innerHTML = `
@@ -670,7 +671,11 @@
         <span class="small muted">${escapeHTML(u.email || '')}</span></div>
       <div class="row" style="margin-top:8px;align-items:flex-end;gap:14px">
         <div class="field" style="margin:0;min-width:190px"><label class="small">Rôle (statut)</label>
-          <select data-role>${Object.entries(store.ROLES).filter(([k]) => k !== 'salarie').map(([k, v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
+          ${roleLocked
+            ? `<select data-role disabled title="Le rôle super-administrateur ne peut pas être changé ici."><option value="super_admin" selected>${escapeHTML(store.ROLES.super_admin.label)}</option></select>`
+            : `<select data-role>${Object.entries(store.ROLES).filter(([k]) => k !== 'salarie' && k !== 'super_admin').map(([k, v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>`}
+          ${roleLocked ? `<div class="hint">🔒 Rôle verrouillé — non modifiable depuis cette interface.</div>` : ''}
+        </div>
         <label class="small" style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" data-actif ${u.actif !== false ? 'checked' : ''} style="width:auto"> Compte actif</label>
       </div>
       <div style="margin-top:10px"><div class="small muted" style="margin-bottom:4px">Secteurs autorisés :</div>
