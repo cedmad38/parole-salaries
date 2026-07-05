@@ -220,10 +220,12 @@
         <img src="assets/logo.png" alt="">
         <div class="title">Parole Salariés<small>Espace élus</small></div>
         <div class="spacer"></div>
-        <div class="who"><b>${escapeHTML(session.nom)}</b><br><span class="role-chip">${escapeHTML(store.ROLES[session.role].label)}</span></div>
-        <button class="btn btn-ghost btn-sm" id="refresh" type="button" title="Voir les nouvelles demandes" style="color:#fff;border-color:rgba(255,255,255,.25)">↻ Actualiser</button>
-        ${data.online() ? `<button class="btn btn-ghost btn-sm" id="my-password" type="button" title="Recevoir un lien pour changer mon mot de passe" style="color:#fff;border-color:rgba(255,255,255,.25)">🔑 Mot de passe</button>` : ''}
-        <button class="btn btn-ghost btn-sm" id="logout" type="button" style="color:#fff;border-color:rgba(255,255,255,.25)">Quitter</button>
+        <div class="topbar-actions">
+        <div class="who"><b>${escapeHTML(session.nom)}</b><span class="role-chip">${escapeHTML(store.ROLES[session.role].label)}</span></div>
+        <button class="btn btn-ghost btn-sm tb-btn" id="refresh" type="button" title="Voir les nouvelles demandes" style="color:#fff;border-color:rgba(255,255,255,.25)">↻<span class="lbl"> Actualiser</span></button>
+        ${data.online() ? `<button class="btn btn-ghost btn-sm tb-btn" id="my-password" type="button" title="Recevoir un lien pour changer mon mot de passe" style="color:#fff;border-color:rgba(255,255,255,.25)">🔑<span class="lbl"> Mot de passe</span></button>` : ''}
+        <button class="btn btn-ghost btn-sm tb-btn" id="logout" type="button" style="color:#fff;border-color:rgba(255,255,255,.25)">Quitter</button>
+        </div>
       </div>
       <div class="elus-shell">
         <nav class="elus-nav" id="nav"></nav>

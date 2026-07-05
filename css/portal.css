@@ -104,3 +104,9 @@ main.portal { padding: 18px 0 90px; }
 
 footer.portal-foot { text-align: center; color: var(--text-mute); font-size: .78rem; padding: 24px 16px 40px; }
 footer.portal-foot a { color: var(--text-soft); }
+
+/* Petits écrans : champs secteur/zone lisibles en pleine largeur plutôt que serrés côte à côte
+   (!important nécessaire : les deux champs ont un min-width en style inline) */
+@media (max-width: 420px) {
+  #etab, #serv { min-width: 100% !important; }
+}

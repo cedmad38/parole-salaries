@@ -7,16 +7,28 @@
   background-image: radial-gradient(100% 180% at 0% 0%, rgba(46,196,166,.18), transparent 45%),
                     radial-gradient(100% 180% at 100% 0%, rgba(124,77,219,.20), transparent 45%);
   color: var(--on-dark); padding: 10px 18px;
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; row-gap: 8px;
   position: sticky; top: 0; z-index: 30; box-shadow: var(--shadow-sm);
 }
-.elus-topbar img { width: 34px; height: 34px; border-radius: 9px; }
+.elus-topbar img { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; }
 .elus-topbar .title { font-weight: 800; font-size: 1rem; }
 .elus-topbar .title small { display: block; font-size: .66rem; color: #b6c4dc; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; }
 .elus-topbar .spacer { flex: 1; }
-.elus-topbar .who { font-size: .82rem; text-align: right; color: #d4deee; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.elus-topbar .who { font-size: .82rem; text-align: right; color: #d4deee; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .elus-topbar .who b { color: #fff; }
-.elus-topbar .role-chip { font-size: .68rem; background: rgba(255,255,255,.12); padding: 2px 8px; border-radius: 999px; }
+.elus-topbar .role-chip { font-size: .68rem; background: rgba(255,255,255,.12); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.tb-btn { white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .elus-topbar { padding: 10px 14px; gap: 8px; }
+  .elus-topbar .title { font-size: .9rem; }
+  .elus-topbar .spacer { flex-basis: 100%; height: 0; }
+  .topbar-actions { width: 100%; margin-left: 0; justify-content: space-between; }
+  .elus-topbar .who { flex-basis: 100%; order: -1; font-size: .76rem; justify-content: flex-start; }
+  .tb-btn .lbl { display: none; }
+  .tb-btn { flex: 1 1 0; min-width: 0; padding: .5em .4em; }
+}
 
 .elus-shell { display: flex; min-height: calc(100vh - 54px); }
 .elus-nav {
@@ -103,6 +115,21 @@
 .bar-row { display: grid; grid-template-columns: 160px 1fr 40px; align-items: center; gap: 10px; margin-bottom: 6px; font-size: .85rem; }
 .bar { height: 12px; background: var(--brand-gradient); border-radius: 999px; }
 .bar-track { background: var(--surface-2); border-radius: 999px; }
+
+/* Bouton d'installation PWA (flottant) */
+.pwa-install-btn {
+  position: fixed; right: 16px; bottom: 16px; z-index: 9998;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border: 0; border-radius: 12px; color: #fff;
+  font: 600 14px/1 -apple-system, sans-serif;
+  background: linear-gradient(120deg, #2ec4a6, #2f7de1, #7c4ddb);
+  box-shadow: 0 8px 24px rgba(16,33,58,.28); cursor: pointer;
+}
+@media (max-width: 640px) {
+  .pwa-install-btn { right: 12px; bottom: 12px; padding: 12px; border-radius: 999px; }
+  .pwa-install-btn .lbl { display: none; }
+  .elus-main { padding-bottom: 72px; }
+}
 
 /* Responsive */
 .nav-toggle { display: none; }

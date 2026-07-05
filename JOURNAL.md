@@ -1,5 +1,14 @@
 # Journal — Parole Salariés By Cedmad
 
+## Adaptation mobile (espace élus + portail) — 2026-07-05
+**Statut : en cours**
+
+Test réel en vue téléphone (375px) via Chrome preview, deux bugs critiques trouvés et corrigés :
+- **Barre du haut de l'espace élus débordait** (509px sur un écran de 375px), forçant **toute la page** à défiler horizontalement — le pire bug mobile possible. Cause : `.elus-topbar` en flex sans wrap, avec nom/rôle + 3 boutons sur une seule ligne impossible à faire tenir. Corrigé : restructuration en `.topbar-actions` (nom/rôle en pleine largeur, boutons en icônes seules avec `<span class="lbl">` masqué sous 640px, `flex-wrap` sur le conteneur). Vérifié : 0 débordement (375=375), rendu intact en tablette (768px, labels complets) et desktop (1280px, barre latérale).
+- **Bouton flottant "Installer l'application" chevauchait le contenu** en bas de chaque page sur mobile (grand bandeau texte fixe). Corrigé : classe `.pwa-install-btn` (au lieu de style inline), devient un petit rond icône-seule sous 640px + `padding-bottom` ajouté à `.elus-main` pour ne plus jamais couvrir la dernière carte.
+- Portail salarié : champs "Secteur" / "Zone-poste" trop serrés côte à côte sur petit écran (texte tronqué) → empilés en pleine largeur sous 420px.
+- Reste du portail salarié et de l'espace élus (fiche demande, formulations, gestion des élus, détail des rôles) déjà bien adaptés — vérifiés sans changement nécessaire.
+
 ## Suppression étendue au référent + repères juridiques par demande — 2026-07-05
 **Statut : en cours**
 
