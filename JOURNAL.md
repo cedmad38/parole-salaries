@@ -1,7 +1,7 @@
 # Journal — Parole Salariés By Cedmad
 
 ## Détection de doublons via IA (§6.2) — 2026-07-07
-**Statut : en cours**
+**Statut : en cours** (déployé et testé en ligne — en attente de validation)
 
 À chaque classification automatique (dépôt d'une nouvelle demande ou relance manuelle
 super-admin), l'IA compare désormais le sujet de la demande aux demandes existantes non
