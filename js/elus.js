@@ -399,8 +399,9 @@
             <p class="hint" style="margin-top:8px">Vérifier la version en vigueur des articles ainsi que la convention collective / les accords applicables. <a href="https://www.legifrance.gouv.fr/" target="_blank" rel="noopener">Legifrance ↗</a></p>
           </div>
           <div class="card card-pad">
-            <h3>💬 Assistant de formulation (§5)</h3>
-            <p class="hint">Généré à partir des faits recueillis — modifiable, jamais transmis automatiquement.</p>
+            <h3>💬 Assistant de formulation (§5) ${d.iaFormulations ? badge('✨ IA · Gemini', 'primary') : ''}</h3>
+            <p class="hint">Généré à partir des faits recueillis — modifiable, jamais transmis automatiquement.${d.iaConfiance ? ' Confiance IA : <strong>' + escapeHTML(d.iaConfiance) + '</strong>.' : ''}</p>
+            ${session.role === 'super_admin' && data.online() ? `<button class="btn btn-ghost btn-sm" id="ia-retry" type="button" style="margin-bottom:8px" title="Réservé au super-administrateur — protège le quota gratuit partagé">🔄 ${d.iaFormulations ? 'Régénérer avec l’IA' : (d.iaTraiteAt ? 'Réessayer la classification IA' : 'Classification IA en cours… forcer maintenant')}</button>` : ''}
             <div id="formuls"></div>
           </div>
           <div class="card card-pad">
@@ -432,9 +433,12 @@
     box.querySelector('#back').onclick = () => { state.view = 'demandes'; render(); };
 
     const fhost = box.querySelector('#formuls');
-    Object.values(assistant.formulations(d)).forEach(f => {
+    const baseForms = assistant.formulations(d);
+    Object.keys(baseForms).forEach(k => {
+      const aiTexte = d.iaFormulations && d.iaFormulations[k];
+      const f = { titre: baseForms[k].titre, finalite: baseForms[k].finalite, texte: aiTexte || baseForms[k].texte, isAI: !!aiTexte };
       const card = el('div', { class: 'formul' });
-      card.innerHTML = `<h4>${escapeHTML(f.titre)}</h4><div class="fin">${escapeHTML(f.finalite)}</div><div class="txt">${escapeHTML(f.texte)}</div>
+      card.innerHTML = `<h4>${escapeHTML(f.titre)}${f.isAI ? ' ' + badge('IA', 'primary') : ''}</h4><div class="fin">${escapeHTML(f.finalite)}</div><div class="txt">${escapeHTML(f.texte)}</div>
         <div class="acts"><button class="btn btn-sm btn-ghost" data-act="copy" type="button">Copier</button>
           ${editable ? '<button class="btn btn-sm btn-primary" data-act="reunion" type="button">→ Réunion</button>' : ''}</div>`;
       card.querySelector('[data-act="copy"]').onclick = async () => { try { await navigator.clipboard.writeText(f.texte); toast('Formulation copiée.'); } catch (e) { toast('Copie impossible.', 'err'); } };
@@ -445,6 +449,18 @@
       };
       fhost.appendChild(card);
     });
+    const iaBtn = box.querySelector('#ia-retry');
+    if (iaBtn) iaBtn.onclick = async () => {
+      iaBtn.disabled = true; const orig = iaBtn.textContent; iaBtn.textContent = '…';
+      try {
+        const r = await data.classifyDemande(d.publicRef, true);
+        if (r && r.ok === false) throw new Error(r.error || 'échec');
+        await reload(); toast('Classification IA mise à jour.'); render();
+      } catch (e) {
+        toast('IA indisponible' + (e && e.message ? ' : ' + e.message : '') + '.', 'err');
+        iaBtn.disabled = false; iaBtn.textContent = orig;
+      }
+    };
 
     renderMessages(box.querySelector('#messages'), d.id);
     if (editable) {

@@ -29,7 +29,17 @@
   async function createDemande(input) {
     const { data, error } = await db().rpc('submit_demande', { payload: input });
     if (error) throw error;
+    // Classification IA (Gemini) déclenchée automatiquement en arrière-plan (§5) —
+    // ne bloque jamais la confirmation affichée au salarié, échec silencieux si indisponible.
+    classifyDemande(data.public_ref).catch(() => {});
     return { publicRef: data.public_ref, secret: data.secret };
+  }
+  // Appel de la fonction IA (Edge Function). `force` (retraitement manuel) n'a d'effet
+  // que pour un élu authentifié — la fonction serveur revérifie ce droit.
+  async function classifyDemande(publicRef, force) {
+    const { data, error } = await db().functions.invoke('classify-demande', { body: { public_ref: publicRef, force: !!force } });
+    if (error) throw error;
+    return data;
   }
   async function trackByRef(ref) {
     const { data, error } = await db().rpc('track_status', { p_ref: ref });
@@ -115,6 +125,7 @@
     service: r.service, priorite: r.priorite, statut: r.statut, reponses: r.reponses || {},
     eluAffecte: r.elu_affecte, notesInternes: r.notes_internes, reponsePubliee: r.reponse_publiee,
     motifCloture: r.motif_cloture, groupeId: r.groupe_id, createdAt: r.created_at, updatedAt: r.updated_at,
+    iaFormulations: r.ia_formulations || null, iaConfiance: r.ia_categorie_confiance || null, iaTraiteAt: r.ia_traite_at || null,
   });
 
   async function getEtabMap() {
@@ -238,7 +249,7 @@
   global.PS = global.PS || {};
   global.PS.api = {
     init, online: true,
-    createDemande, trackByRef, trackFull, addSalariePrecision,
+    createDemande, trackByRef, trackFull, addSalariePrecision, classifyDemande,
     login, logout, currentSession, listElus, updateElu,
     signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
     getDemandes, getDemande, updateDemande, addEluMessage, messagesFor, piecesFor,

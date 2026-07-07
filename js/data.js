@@ -110,6 +110,11 @@
   async function addQuestionReunion(q, actor)            { return online() ? api().addQuestionReunion(q, actor) : store().addQuestionReunion(q, actor); }
   async function mergeDemandes(m, ids, actor)            { return online() ? api().mergeDemandes(m, ids, actor) : store().mergeDemandes(m, ids, actor); }
   async function deleteDemande(id, actor)                { const r = online() ? await api().deleteDemande(id) : store().deleteDemande(id, actor); delete snap._msgs[id]; delete snap._acts[id]; delete snap._reps[id]; return r; }
+  // Relance manuelle de la classification IA (Gemini) — mode local : indisponible (retourne un message clair)
+  async function classifyDemande(publicRef, force) {
+    if (!online()) throw new Error("La classification IA nécessite le mode en ligne.");
+    return api().classifyDemande(publicRef, force);
+  }
 
   /* ---------------- Statistiques (depuis l'instantané) ---------------- */
   function stats() {
@@ -138,7 +143,7 @@
     signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
     loadElus, demandes, demandeById, journal, etablissements, organisation, questionsReunion,
     messagesFor, actionsFor, reponsesFor, revealIdentity,
-    updateDemande, addEluMessage, addReponseDirection, addAction, addQuestionReunion, mergeDemandes, deleteDemande,
+    updateDemande, addEluMessage, addReponseDirection, addAction, addQuestionReunion, mergeDemandes, deleteDemande, classifyDemande,
     stats, exportAll,
   };
 })(window);

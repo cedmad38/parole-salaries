@@ -67,6 +67,9 @@ create table if not exists demandes (
   reponse_publiee text default '',
   motif_cloture text default '',
   groupe_id text,
+  ia_formulations jsonb,           -- formulations générées par l'IA (§5), null tant que non traité
+  ia_categorie_confiance text,     -- 'élevée' | 'moyenne' | 'faible' | null
+  ia_traite_at timestamptz,        -- horodatage du dernier traitement IA
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

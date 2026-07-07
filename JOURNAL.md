@@ -1,5 +1,55 @@
 # Journal — Parole Salariés By Cedmad
 
+## Classification & formulations générées par IA (Gemini) — 2026-07-06
+**Statut : en cours**
+
+Intégration d'une vraie IA (Google Gemini, gratuit) pour classer automatiquement chaque
+demande et proposer des formulations dès son arrivée, sans exposer aucune clé côté navigateur.
+
+- **Architecture** : nouvelle Supabase Edge Function `classify-demande` (Deno). La clé
+  `GEMINI_API_KEY` est stockée **uniquement** comme secret de la fonction (jamais dans le
+  code, jamais commit sur GitHub, jamais visible côté client).
+- **Déclenchement automatique** : dès qu'un salarié dépose une demande (`api.js
+  createDemande`), la classification IA se lance en tâche de fond (fire-and-forget),
+  sans bloquer ni ralentir la confirmation affichée au salarié.
+- **Garde-fous embarqués dans le prompt** (§5.3/§9) : n'utilise que les faits fournis,
+  marque « [à préciser] » ce qui manque plutôt que de l'inventer, ne qualifie jamais
+  automatiquement harcèlement/discrimination/danger grave, catégorie strictement limitée
+  à la liste fermée (18 valeurs, revérifiée côté serveur), style **court et humain**
+  (1 à 3 phrases, pas de ton robotique).
+- **Sortie structurée** : `responseSchema` Gemini garantit un JSON fiable (catégorie,
+  confiance, 7 formulations : courte/développée/CSSCT/CSE/relance/chiffrée/centrale).
+- **Relance manuelle réservée à Cedmad (super-admin) uniquement** : le bouton
+  « 🔄 Régénérer avec l'IA » n'apparaît que pour le super-administrateur (côté client
+  ET revérifié côté serveur via le rôle dans la table `elus`) — protège le quota gratuit
+  partagé d'un usage excessif par les autres élus.
+- **Résultat affiché** dans la fiche demande : badge « ✨ IA · Gemini », niveau de
+  confiance, formulations marquées individuellement « IA » quand générées par le modèle
+  (repli automatique sur le système déterministe existant si l'IA n'a pas encore traité
+  ou est indisponible).
+- Migration DB : colonnes `ia_formulations` (jsonb), `ia_categorie_confiance`, `ia_traite_at`.
+
+**Incident résolu pendant le déploiement** : le copier-coller (presse-papier macOS) vers
+l'éditeur Supabase corrompait les caractères accentués (mojibake UTF-8→MacRoman, ex.
+« appliquée » → « appliqu√©e »). Contournement : injection du code directement via
+`monaco.editor.setValue()` en JavaScript (bytes UTF-8 corrects, vérifié caractère par
+caractère) plutôt que par le presse-papier. Risque identifié : les tout premiers scripts
+SQL collés en tout début de session ont pu subir la même corruption dans des commentaires
+ou libellés — impact réel nul (données de démo depuis supprimées, aucune donnée
+fonctionnelle actuelle affectée), mais à garder en tête pour tout futur collage de texte
+accentué dans l'éditeur Supabase.
+
+**Modèle** : `gemini-2.0-flash` avait un quota gratuit à 0 sur la clé fournie (erreur
+Google explicite « limit: 0 ») → basculé sur `gemini-2.5-flash`, qui dispose d'un vrai
+quota gratuit (vérifié par tests directs). Redéfinissable via le secret `GEMINI_MODEL`
+si besoin.
+
+Tests réels effectués (bout en bout, sur la vraie base) : **6/6** — classification
+correcte (« Risque sécurité », confiance élevée), formulation courte et naturelle (95
+caractères, aucun fait inventé), un anonyme ne peut pas forcer un nouveau traitement
+(quota protégé), Cedmad (super-admin) peut forcer une relance. Données de test nettoyées
+après vérification.
+
 ## Rôle super-administrateur verrouillé — 2026-07-05
 **Statut : en cours**
 
