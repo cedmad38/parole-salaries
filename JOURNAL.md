@@ -1,7 +1,15 @@
 # Journal — Parole Salariés By Cedmad
 
-## Détection de doublons via IA (§6.2) — 2026-07-07
+## Détection de doublons via IA (§6.2) — 2026-07-07 / 2026-07-08
 **Statut : en cours** (déployé et testé en ligne — en attente de validation)
+
+Ajout (2026-07-08) : la carte dédiée sur la fiche demande n'était visible qu'en ouvrant
+chaque dossier un par un. Ajout de deux repères pour les repérer sans naviguer partout :
+- Badge « 🔗 doublon possible » directement sur la carte de chaque demande, dans la liste
+  des demandes et dans « Dernières demandes » du tableau de bord.
+- Nouvelle carte « 🔗 Doublons potentiels détectés par l'IA » sur le tableau de bord,
+  listant en un coup d'œil toutes les demandes non closes concernées, cliquables vers
+  leur fiche (n'apparaît que s'il y en a au moins une).
 
 À chaque classification automatique (dépôt d'une nouvelle demande ou relance manuelle
 super-admin), l'IA compare désormais le sujet de la demande aux demandes existantes non

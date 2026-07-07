@@ -279,6 +279,8 @@
     const ds = visibleDemandes();
     const st = data.stats();
     const recur = Object.entries(st.byCat).filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1]);
+    const closedStatuts = ['Clôturée', 'Archivée', 'Résolue'];
+    const withDoublons = ds.filter(d => d.iaDoublons && d.iaDoublons.length && !closedStatuts.includes(d.statut));
 
     const box = el('div');
     box.innerHTML = `
@@ -298,7 +300,16 @@
           : '<p class="muted small">Aucun sujet récurrent détecté pour l\'instant.</p>'}
         <p class="hint" style="margin-top:8px">Les regroupements ne sont jamais automatiques : ils sont proposés puis validés par un élu.</p>
       </div>
+      ${withDoublons.length ? `<div class="card card-pad" style="margin-bottom:14px;border-left:3px solid var(--primary)">
+        <h3>🔗 Doublons potentiels détectés par l'IA (§6.2) ${badge(withDoublons.length + ' demande' + (withDoublons.length > 1 ? 's' : ''), 'primary')}</h3>
+        <p class="hint">Suggestions à vérifier — jamais une fusion automatique.</p>
+        <div id="doublons-alert"></div>
+      </div>` : ''}
       <div class="card card-pad"><h3>Dernières demandes</h3><div id="recent"></div></div>`;
+    if (withDoublons.length) {
+      const dhost = box.querySelector('#doublons-alert');
+      withDoublons.forEach(d => dhost.appendChild(demItem(d)));
+    }
     const recent = box.querySelector('#recent');
     ds.slice(0, 5).forEach(d => recent.appendChild(demItem(d)));
     if (!ds.length) recent.innerHTML = '<p class="muted small">Aucune demande dans votre périmètre.</p>';
@@ -345,7 +356,7 @@
       <div class="body">
         <div class="res">${escapeHTML(d.resume || type.label || 'Demande')}</div>
         <div class="meta"><span>${escapeHTML(d.publicRef)}</span>·<span>${escapeHTML(d.categorie || 'à classer')}</span>·<span>${escapeHTML(d.etablissement || '—')}</span>
-          ${badge(conf.label, conf.color)} ${d.groupeId ? badge('regroupée', 'mute') : ''}</div>
+          ${badge(conf.label, conf.color)} ${d.groupeId ? badge('regroupée', 'mute') : ''} ${d.iaDoublons && d.iaDoublons.length ? badge('🔗 doublon possible', 'primary') : ''}</div>
       </div>
       <div class="right">${d.priorite === 'Urgente' ? badge('Urgent', 'danger') : ''}
         <div style="margin-top:4px">${badge(d.statut, store.STATUT_COLOR[d.statut] || 'mute')}</div></div>`;
