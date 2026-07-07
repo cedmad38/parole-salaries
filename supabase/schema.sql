@@ -70,6 +70,7 @@ create table if not exists demandes (
   ia_formulations jsonb,           -- formulations générées par l'IA (§5), null tant que non traité
   ia_categorie_confiance text,     -- 'élevée' | 'moyenne' | 'faible' | null
   ia_traite_at timestamptz,        -- horodatage du dernier traitement IA
+  ia_doublons jsonb,                -- doublons potentiels suggérés par l'IA (§6.2), jamais une fusion auto
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

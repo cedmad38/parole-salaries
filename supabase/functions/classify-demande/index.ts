@@ -6,7 +6,10 @@
 // (clé stockée UNIQUEMENT ici, jamais côté navigateur) pour :
 //   1) suggérer une catégorie (parmi la liste fermée du cahier des
 //      charges — jamais une valeur inventée) ;
-//   2) générer les 7 formulations de questions (§5).
+//   2) générer les 7 formulations de questions (§5) ;
+//   3) repérer des demandes existantes qui semblent parler du même sujet
+//      (§6.2) — SANS jamais fusionner ni conclure : proposition à
+//      valider par un élu.
 //
 // Garde-fous (§5.3, §9), imposés dans le prompt ET revérifiés ici :
 //   - n'utiliser QUE les faits fournis (texte brut + précisions) ;
@@ -14,7 +17,9 @@
 //   - ne jamais qualifier automatiquement harcèlement/discrimination/
 //     danger grave et imminent ;
 //   - la catégorie renvoyée doit être strictement l'une des valeurs
-//     autorisées (CATEGORIES), sinon elle est ignorée.
+//     autorisées (CATEGORIES), sinon elle est ignorée ;
+//   - les doublons potentiels sont une SUGGESTION, jamais une fusion
+//     automatique (validation humaine obligatoire).
 //
 // Clé nécessaire (secret de la fonction, PAS un secret de projet) :
 //   GEMINI_API_KEY  — clé gratuite depuis https://aistudio.google.com/apikey
@@ -61,8 +66,19 @@ const RESPONSE_SCHEMA = {
       },
       required: ["courte", "developpee", "cssct", "cse", "relance", "chiffree", "centrale"],
     },
+    doublons_potentiels: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          public_ref: { type: "STRING" },
+          raison: { type: "STRING" },
+        },
+        required: ["public_ref", "raison"],
+      },
+    },
   },
-  required: ["categorie", "confiance", "formulations"],
+  required: ["categorie", "confiance", "formulations", "doublons_potentiels"],
 };
 
 const SYSTEM_INSTRUCTION = `Tu assistes des élus du personnel (CSE/CSSCT) en France. Tu reçois le témoignage brut d'un salarié.
@@ -73,13 +89,17 @@ RÈGLES ABSOLUES (à respecter strictement) :
 3. Ne donne aucun conseil juridique définitif.
 4. La "categorie" doit être EXACTEMENT une valeur de la liste fournie, jamais une valeur inventée.
 5. Style : formulations COURTES (1 à 3 phrases maximum), naturelles et humaines — comme si un élu du personnel les avait écrites lui-même. Évite le ton robotique, ampoulé ou trop juridique. Reste factuel, direct, professionnel mais chaleureux, orienté vers une réponse concrète de la direction (mesures, délais, responsable), sans jugement ni accusation.
-6. Réponds UNIQUEMENT avec l'objet JSON demandé, rien d'autre.`;
+6. Pour "doublons_potentiels" : compare le sujet de la nouvelle demande à la liste des demandes existantes fournie. Ne signale QUE celles qui semblent concerner la MÊME situation concrète (même problème récurrent, même incident, même sujet précis) — pas simplement la même catégorie générale. En cas de doute, ne signale rien plutôt que de sur-signaler. Explique brièvement pourquoi dans "raison" (une phrase). Renvoie un tableau vide si aucune ne correspond. Ceci reste une SUGGESTION : ne dis jamais qu'il s'agit du même salarié ou de la même identité, seulement du même sujet.
+7. Réponds UNIQUEMENT avec l'objet JSON demandé, rien d'autre.`;
 
-function buildPrompt(d: any) {
+function buildPrompt(d: any, candidats: { public_ref: string; resume: string; categorie: string }[]) {
   const reponsesTxt = Object.entries(d.reponses || {})
     .filter(([, v]) => v)
     .map(([k, v]) => `- ${k} : ${v}`)
     .join("\n") || "(aucune précision complémentaire fournie)";
+  const candidatsTxt = candidats.length
+    ? candidats.map(c => `- ${c.public_ref} [${c.categorie || "non classé"}] : ${c.resume || "(pas de résumé)"}`).join("\n")
+    : "(aucune autre demande en cours à comparer)";
   return `Catégories autorisées : ${CATEGORIES.join(" | ")}
 
 Type de demande déclaré par le salarié : ${d.type_id}
@@ -93,7 +113,10 @@ ${d.texte_brut}
 Précisions complémentaires recueillies :
 ${reponsesTxt}
 
-Propose : la catégorie la plus pertinente (dans la liste autorisée), ton niveau de confiance, les informations qui manqueraient pour traiter le dossier, et les 7 formulations demandées (courte, développée, version CSSCT orientée santé/sécurité, version CSE orientée organisation/droits collectifs, une relance en cas de réponse insuffisante, une demande chiffrée, une question pour instance centrale/multi-établissements).`;
+Demandes existantes non closes (pour repérer d'éventuels doublons — références et résumés uniquement) :
+${candidatsTxt}
+
+Propose : la catégorie la plus pertinente (dans la liste autorisée), ton niveau de confiance, les informations qui manqueraient pour traiter le dossier, les 7 formulations demandées (courte, développée, version CSSCT orientée santé/sécurité, version CSE orientée organisation/droits collectifs, une relance en cas de réponse insuffisante, une demande chiffrée, une question pour instance centrale/multi-établissements), et les doublons potentiels parmi les demandes existantes listées ci-dessus.`;
 }
 
 async function callGemini(prompt: string, apiKey: string) {
@@ -177,15 +200,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    const result = await callGemini(buildPrompt(d), GEMINI_API_KEY);
+    // Demandes existantes non closes, pour la détection de doublons potentiels (§6.2)
+    const { data: candidatsRaw } = await admin
+      .from("demandes")
+      .select("public_ref, resume, categorie")
+      .neq("id", d.id)
+      .not("statut", "in", "(Clôturée,Archivée,Résolue)")
+      .order("created_at", { ascending: false })
+      .limit(30);
+    const candidats = candidatsRaw || [];
+    const candidatRefs = new Set(candidats.map((c) => c.public_ref));
+
+    const result = await callGemini(buildPrompt(d, candidats), GEMINI_API_KEY);
 
     const categorie = CATEGORIES.includes(result.categorie) ? result.categorie : d.categorie;
     const formulations = result.formulations || null;
+    // Ne garder que des doublons pointant vers une demande réellement fournie dans le prompt
+    // (protection contre une référence halluciné) — jamais la demande elle-même.
+    const doublons = Array.isArray(result.doublons_potentiels)
+      ? result.doublons_potentiels.filter((x: any) => x && candidatRefs.has(x.public_ref) && x.public_ref !== public_ref)
+      : [];
 
     await admin.from("demandes").update({
       categorie,
       ia_formulations: formulations,
       ia_categorie_confiance: result.confiance || null,
+      ia_doublons: doublons,
       ia_traite_at: new Date().toISOString(),
     }).eq("id", d.id);
 
@@ -193,10 +233,10 @@ Deno.serve(async (req) => {
       action: "Classification IA (Gemini) appliquée",
       user_label: isSuperAdmin ? "IA (Gemini) — relance Cedmad" : "IA (Gemini)",
       demande_id: d.id,
-      detail: categorie,
+      detail: categorie + (doublons.length ? ` · ${doublons.length} doublon(s) potentiel(s)` : ""),
     });
 
-    return new Response(JSON.stringify({ ok: true, categorie, confiance: result.confiance, formulations }), {
+    return new Response(JSON.stringify({ ok: true, categorie, confiance: result.confiance, formulations, doublons }), {
       status: 200, headers: { ...CORS, "Content-Type": "application/json" },
     });
   } catch (e) {

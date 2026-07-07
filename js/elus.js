@@ -404,6 +404,11 @@
             ${session.role === 'super_admin' && data.online() ? `<button class="btn btn-ghost btn-sm" id="ia-retry" type="button" style="margin-bottom:8px" title="Réservé au super-administrateur — protège le quota gratuit partagé">🔄 ${d.iaFormulations ? 'Régénérer avec l’IA' : (d.iaTraiteAt ? 'Réessayer la classification IA' : 'Classification IA en cours… forcer maintenant')}</button>` : ''}
             <div id="formuls"></div>
           </div>
+          ${d.iaDoublons && d.iaDoublons.length ? `<div class="card card-pad" style="border-left:3px solid var(--primary)">
+            <h3>🔗 Doublons potentiels (§6.2) ${badge('✨ IA · Gemini', 'primary')}</h3>
+            <p class="hint">Suggestion de l'IA à partir du sujet — <strong>jamais une fusion automatique</strong>. À vérifier et regrouper manuellement si pertinent.</p>
+            <div id="doublons"></div>
+          </div>` : ''}
           <div class="card card-pad">
             <h3>Échanges</h3>
             <div id="messages"></div>
@@ -449,6 +454,30 @@
       };
       fhost.appendChild(card);
     });
+    const dhost = box.querySelector('#doublons');
+    if (dhost && d.iaDoublons) {
+      d.iaDoublons.forEach(dup => {
+        const other = data.demandes().find(x => x.publicRef === dup.public_ref);
+        const card = el('div', { class: 'formul' });
+        card.innerHTML = `<h4>${escapeHTML(dup.public_ref)}${other ? ' — ' + escapeHTML(other.resume || '') : ''}</h4>
+          <div class="fin">${escapeHTML(dup.raison || '')}</div>
+          <div class="acts">
+            ${other ? '<button class="btn btn-sm btn-ghost" data-act="voir" type="button">Voir le dossier</button>' : '<span class="small muted">Dossier introuvable (peut-être clôturé depuis)</span>'}
+            ${other && editable ? '<button class="btn btn-sm btn-primary" data-act="regrouper" type="button">Regrouper</button>' : ''}
+          </div>`;
+        const vb = card.querySelector('[data-act="voir"]');
+        if (vb) vb.onclick = () => openFiche(other.id);
+        const rb = card.querySelector('[data-act="regrouper"]');
+        if (rb) rb.onclick = async () => {
+          rb.disabled = true;
+          try {
+            await data.mergeDemandes(d.id, [other.id], session.nom);
+            await reload(); toast('Demandes regroupées.'); render();
+          } catch (e) { toast('Regroupement impossible.', 'err'); rb.disabled = false; }
+        };
+        dhost.appendChild(card);
+      });
+    }
     const iaBtn = box.querySelector('#ia-retry');
     if (iaBtn) iaBtn.onclick = async () => {
       iaBtn.disabled = true; const orig = iaBtn.textContent; iaBtn.textContent = '…';

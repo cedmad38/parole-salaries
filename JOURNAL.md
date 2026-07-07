@@ -1,5 +1,29 @@
 # Journal — Parole Salariés By Cedmad
 
+## Détection de doublons via IA (§6.2) — 2026-07-07
+**Statut : en cours**
+
+À chaque classification automatique (dépôt d'une nouvelle demande ou relance manuelle
+super-admin), l'IA compare désormais le sujet de la demande aux demandes existantes non
+closes (30 plus récentes) et signale celles qui semblent concerner la même situation
+concrète — jamais une simple même catégorie.
+
+- Nouveau champ `ia_doublons` (jsonb) sur `demandes`, rempli par l'edge function
+  `classify-demande` : tableau de `{ public_ref, raison }`.
+- Garde-fous : suggestion uniquement, **aucune fusion automatique** ; en cas de doute
+  l'IA ne signale rien ; toute référence renvoyée qui ne correspond pas à une demande
+  réellement fournie dans le prompt est filtrée côté serveur (protection anti-hallucination) ;
+  l'IA ne prétend jamais qu'il s'agit du même salarié, seulement du même sujet.
+- Côté élus : nouvelle carte « 🔗 Doublons potentiels » sur la fiche demande (visible
+  uniquement si l'IA a signalé quelque chose), avec lien « Voir le dossier » et bouton
+  « Regrouper » (réutilise le regroupement existant, réservé aux rôles habilités à éditer).
+
+Testé en conditions réelles : deux demandes de test volontairement similaires (panne
+récurrente d'un même monte-charge) → la seconde a correctement été liée à la première
+avec une raison pertinente ; référence IA vérifiée non hallucinée. Gabarit HTML de la
+carte élus vérifié directement (échappement correct, boutons présents). Données de test
+nettoyées (demandes + entrées journal).
+
 ## Bouton « Question rapide » (portail salarié) — 2026-07-06
 **Statut : en cours**
 

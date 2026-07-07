@@ -126,6 +126,7 @@
     eluAffecte: r.elu_affecte, notesInternes: r.notes_internes, reponsePubliee: r.reponse_publiee,
     motifCloture: r.motif_cloture, groupeId: r.groupe_id, createdAt: r.created_at, updatedAt: r.updated_at,
     iaFormulations: r.ia_formulations || null, iaConfiance: r.ia_categorie_confiance || null, iaTraiteAt: r.ia_traite_at || null,
+    iaDoublons: r.ia_doublons || null,
   });
 
   async function getEtabMap() {
