@@ -29,6 +29,7 @@
   function screenAccueil() {
     draft = newDraft();
     const actions = [
+      { ic: '⚡', lab: 'Question rapide', sub: 'Écrivez, indiquez votre secteur, envoyé aussitôt', go: () => go('rapide') },
       { ic: '💬', lab: 'Poser une question', sub: 'CSE, CSSCT ou réclamation', go: () => go('type') },
       { ic: '⚠️', lab: 'Signaler une situation dangereuse', sub: 'Sécurité, accident, presque-accident', danger: true, go: () => { draft.typeId = 'danger'; go('redaction'); } },
       { ic: '💡', lab: 'Proposer une amélioration', sub: 'Idée pour améliorer le travail', go: () => { draft.typeId = 'amelioration'; go('redaction'); } },
@@ -51,6 +52,52 @@
         el('span', {}, [el('span', { class: 'lab', text: a.lab }), el('br'), el('span', { class: 'sub', text: a.sub })]),
       ]));
     });
+    mount(box);
+  }
+
+  /* ======================= ÉCRAN QUESTION RAPIDE ======================= */
+  // Parcours minimal : texte + secteur, envoi direct. Toujours anonyme (aucune identité
+  // demandée), pour rester rapide — le choix est affiché clairement avant l'envoi (§3.4).
+  function screenRapide() {
+    const box = el('div', { class: 'screen' });
+    box.innerHTML = `
+      <h1>Question rapide</h1>
+      <p class="muted small">Écrivez votre question, indiquez votre secteur, c'est envoyé — sans étape supplémentaire.</p>
+      <div class="notice notice-info" style="margin-bottom:14px"><span class="ico">🕶️</span>
+        <div>Envoyée <strong>anonymement</strong> (aucune identité communiquée). Pour être identifié·e, préciser des détails ou joindre un document, utilisez plutôt « Poser une question ».</div></div>
+      <div class="field">
+        <label for="rq-txt">Votre question</label>
+        <textarea id="rq-txt" placeholder="Ex. Pourquoi les plannings changent-ils sans prévenir ?" style="min-height:120px"></textarea>
+      </div>
+      <div class="field">
+        <label for="rq-secteur">Votre secteur</label>
+        <select id="rq-secteur">
+          <option value="">— Choisir un secteur —</option>
+          ${(window.PS.config.secteurs || []).map(s => `<option>${escapeHTML(s)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" type="button" id="back">Retour</button>
+        <button class="btn btn-gradient grow" type="button" id="send">Envoyer</button>
+      </div>`;
+    box.querySelector('#back').onclick = () => go('accueil');
+    box.querySelector('#send').onclick = async () => {
+      const txt = box.querySelector('#rq-txt').value.trim();
+      const secteur = box.querySelector('#rq-secteur').value;
+      if (txt.length < 12) { toast('Merci de décrire un peu plus votre question.', 'err'); return; }
+      const btn = box.querySelector('#send'); btn.disabled = true; btn.textContent = 'Envoi…';
+      try {
+        const resume = assistant.summarize(txt, {});
+        const res = await PS.data.createDemande({
+          typeId: 'autre', texteBrut: txt, reponses: {}, confidentialite: 'anonyme_total',
+          etablissement: secteur, service: '', resume, categorie: '', pieces: [],
+        });
+        showConfirmation(res);
+      } catch (e) {
+        btn.disabled = false; btn.textContent = 'Envoyer';
+        toast('Envoi impossible. Vérifiez votre connexion.', 'err');
+      }
+    };
     mount(box);
   }
 
@@ -418,7 +465,7 @@
   function mount(node) { const r = root(); r.innerHTML = ''; r.appendChild(node); window.scrollTo(0, 0); }
 
   const SCREENS = {
-    accueil: screenAccueil, type: screenType, redaction: screenRedaction, assistant: screenAssistant,
+    accueil: screenAccueil, rapide: screenRapide, type: screenType, redaction: screenRedaction, assistant: screenAssistant,
     confidentialite: screenConfidentialite, validation: screenValidation, suivi: screenSuivi,
     confidentialiteRules: screenConfidentialiteRules, urgence: screenUrgence,
   };

@@ -1,5 +1,27 @@
 # Journal — Parole Salariés By Cedmad
 
+## Bouton « Question rapide » (portail salarié) — 2026-07-06
+**Statut : en cours**
+
+Nouveau premier bouton de l'accueil salarié : un parcours minimal en un seul écran —
+texte de la question + choix du secteur + Envoyer, sans aucune autre étape (pas de
+type, pas de questions de l'assistant, pas d'écran de confidentialité séparé, pas de
+récapitulatif). Objectif : le salarié qui ne veut pas se prendre la tête peut poser sa
+question en quelques secondes.
+
+- Toujours **anonyme total** (aucune identité demandée) — affiché clairement dans un
+  bandeau avant l'envoi, pour rester transparent malgré l'absence d'étape dédiée (§3.4).
+  Un renvoi vers « Poser une question » est proposé pour qui veut être identifié·e,
+  préciser des détails ou joindre un document.
+- Réutilise le même chemin d'envoi (`PS.data.createDemande`) que le parcours complet :
+  la classification automatique par IA (Gemini) se déclenche donc aussi pour les
+  questions rapides.
+- Écran de confirmation (numéro de suivi + code secret) inchangé.
+
+Testé en conditions réelles : **6/6** — anonymat respecté (aucune ligne dans `identites`),
+secteur correctement lié, classification IA automatique fonctionnelle (ex. « Conditions
+matérielles » suggérée correctement pour un micro-ondes en panne). Donnée de test nettoyée.
+
 ## Classification & formulations générées par IA (Gemini) — 2026-07-06
 **Statut : en cours**
 
