@@ -95,6 +95,16 @@
   const questionsReunion = () => snap.questions;
   const messagesFor     = (id) => (snap._msgs[id] || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   const actionsFor      = (id) => snap._acts[id] || [];
+  // Actions de suivi de toutes les demandes visibles, avec la demande liée (pour la vue Échéances)
+  const allActions = () => {
+    const out = [];
+    Object.entries(snap._acts).forEach(([demandeId, list]) => {
+      const d = snap.demandes.find(x => x.id === demandeId);
+      if (!d) return; // hors périmètre (RLS) ou demande supprimée
+      list.forEach(a => out.push(Object.assign({}, a, { demande: d })));
+    });
+    return out;
+  };
   const reponsesFor     = (id) => snap._reps[id] || [];
 
   // Identité protégée : chargée à la demande (et journalisée en ligne)
@@ -107,6 +117,11 @@
   async function addEluMessage(id, contenu, actor, o)    { if (online()) await api().addEluMessage(id, contenu, actor, o); else store().addEluMessage(id, contenu, actor, o); delete snap._msgs[id]; }
   async function addReponseDirection(id, texte, actor)   { if (online()) await api().addReponseDirection(id, texte, actor); else store().addReponseDirection(id, texte, actor); delete snap._reps[id]; }
   async function addAction(id, action, actor)            { if (online()) await api().addAction(id, action, actor); else store().addAction(id, action, actor); delete snap._acts[id]; }
+  async function updateAction(demandeId, actionId, patch, actor) {
+    if (online()) await api().updateAction(demandeId, actionId, patch, actor);
+    else store().updateAction(demandeId, actionId, patch, actor);
+    delete snap._acts[demandeId];
+  }
   async function addQuestionReunion(q, actor)            { return online() ? api().addQuestionReunion(q, actor) : store().addQuestionReunion(q, actor); }
   async function mergeDemandes(m, ids, actor)            { return online() ? api().mergeDemandes(m, ids, actor) : store().mergeDemandes(m, ids, actor); }
   async function deleteDemande(id, actor)                { const r = online() ? await api().deleteDemande(id) : store().deleteDemande(id, actor); delete snap._msgs[id]; delete snap._acts[id]; delete snap._reps[id]; return r; }
@@ -142,8 +157,8 @@
     login, logout, currentSession, listElus, updateElu,
     signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
     loadElus, demandes, demandeById, journal, etablissements, organisation, questionsReunion,
-    messagesFor, actionsFor, reponsesFor, revealIdentity,
-    updateDemande, addEluMessage, addReponseDirection, addAction, addQuestionReunion, mergeDemandes, deleteDemande, classifyDemande,
+    messagesFor, actionsFor, allActions, reponsesFor, revealIdentity,
+    updateDemande, addEluMessage, addReponseDirection, addAction, updateAction, addQuestionReunion, mergeDemandes, deleteDemande, classifyDemande,
     stats, exportAll,
   };
 })(window);

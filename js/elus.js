@@ -32,6 +32,26 @@
     const ds = data.demandes();
     return data.online() ? ds : ds.filter(canSeeDemande); // en ligne : la RLS a déjà filtré
   }
+  // Actions de suivi (§4.3) des demandes visibles, avec un indicateur d'urgence par échéance.
+  function visibleActions() {
+    const visibleIds = new Set(visibleDemandes().map(d => d.id));
+    const today = new Date().toISOString().slice(0, 10);
+    const soonLimit = addDays(today, 7);
+    return data.allActions().filter(a => visibleIds.has(a.demandeId)).map(a => {
+      let urgency = 'done';
+      if (a.etat !== 'Fait') {
+        if (!a.echeance) urgency = 'nodate';
+        else if (a.echeance < today) urgency = 'overdue';
+        else if (a.echeance <= soonLimit) urgency = 'soon';
+        else urgency = 'upcoming';
+      }
+      return Object.assign({}, a, { urgency });
+    });
+  }
+  function addDays(iso, n) {
+    const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
 
   /* ======================= LOGIN ======================= */
   function renderLogin() {
@@ -204,9 +224,11 @@
   }
   function renderShell(contentNode) {
     const c = counts();
+    const overdue = visibleActions().filter(a => a.urgency === 'overdue').length;
     const nav = [
       { id: 'dashboard', ic: '📊', label: 'Tableau de bord' },
       { id: 'demandes', ic: '📥', label: 'Demandes', n: c.nouvelles || '' },
+      { id: 'echeances', ic: '📅', label: 'Échéances', n: overdue || '' },
       { id: 'reunions', ic: '🗂️', label: 'Réunions' },
       { id: 'stats', ic: '📈', label: 'Statistiques' },
       { id: 'qr', ic: '🔗', label: 'QR portail' },
@@ -314,6 +336,73 @@
     ds.slice(0, 5).forEach(d => recent.appendChild(demItem(d)));
     if (!ds.length) recent.innerHTML = '<p class="muted small">Aucune demande dans votre périmètre.</p>';
     renderShell(box); wireKPIs();
+  }
+
+  /* ======================= ÉCHÉANCES ======================= */
+  const URGENCY_LABEL = { overdue: '⏰ En retard', soon: '🟠 Bientôt (< 7 j)', upcoming: '🗓️ À venir', nodate: 'Sans échéance', done: 'Faite' };
+  const URGENCY_COLOR = { overdue: 'danger', soon: 'warn', upcoming: 'mute', nodate: 'mute', done: 'ok' };
+  const URGENCY_ORDER = { overdue: 0, soon: 1, upcoming: 2, nodate: 3, done: 4 };
+  function viewEcheances() {
+    const editable = canEdit();
+    const all = visibleActions().sort((a, b) => (URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency]) || (a.echeance || '9999').localeCompare(b.echeance || '9999'));
+    const pending = all.filter(a => a.urgency !== 'done');
+    const done = all.filter(a => a.urgency === 'done');
+    const overdueCount = all.filter(a => a.urgency === 'overdue').length;
+    const soonCount = all.filter(a => a.urgency === 'soon').length;
+
+    const actionRow = (a) => {
+      const d = a.demande;
+      const node = el('div', { class: 'dem-item', onclick: () => openFiche(d.id) });
+      node.innerHTML = `
+        <span class="ic">📅</span>
+        <div class="body">
+          <div class="res">${escapeHTML(a.libelle || 'Action de suivi')}</div>
+          <div class="meta"><span>${escapeHTML(d.publicRef)}</span>·<span>${escapeHTML(d.resume || '')}</span>
+            ${a.responsable ? '·<span>' + escapeHTML(a.responsable) + '</span>' : ''}
+            ${badge(URGENCY_LABEL[a.urgency], URGENCY_COLOR[a.urgency])}</div>
+        </div>
+        <div class="right">
+          <div class="small muted">${a.echeance ? fmtDay(a.echeance) : '—'}</div>
+          ${editable ? `<button class="btn btn-ghost btn-sm" data-act="toggle" type="button" style="margin-top:4px">${a.etat === 'Fait' ? 'Rouvrir' : 'Marquer fait'}</button>` : ''}
+        </div>`;
+      const btn = node.querySelector('[data-act="toggle"]');
+      if (btn) btn.onclick = async (ev) => {
+        ev.stopPropagation(); btn.disabled = true;
+        try {
+          await data.updateAction(d.id, a.id, { etat: a.etat === 'Fait' ? 'À faire' : 'Fait' }, session.nom);
+          await reload(); toast(a.etat === 'Fait' ? 'Action rouverte.' : 'Action marquée comme faite.'); render();
+        } catch (e) { toast('Mise à jour impossible.', 'err'); btn.disabled = false; }
+      };
+      return node;
+    };
+
+    const box = el('div');
+    box.innerHTML = `
+      <h1>Échéances</h1>
+      <p class="page-sub">Toutes les actions de suivi (§4.3) de votre périmètre, triées par urgence.</p>
+      <div class="kpi-grid">
+        <div class="kpi alert"><div class="v">${overdueCount}</div><div class="l">En retard</div></div>
+        <div class="kpi warn"><div class="v">${soonCount}</div><div class="l">Bientôt (&lt; 7 j)</div></div>
+        <div class="kpi ok"><div class="v">${done.length}</div><div class="l">Faites</div></div>
+      </div>
+      <div class="card card-pad"><h3>À traiter</h3><div id="pending"></div></div>
+      <div class="card card-pad" style="margin-top:12px">
+        <div class="row-between"><h3 style="margin:0">Faites <span class="muted small">(${done.length})</span></h3>
+          ${done.length ? '<button class="btn btn-ghost btn-sm" id="toggle-done" type="button">Afficher</button>' : ''}</div>
+        <div id="done-list" style="display:none;margin-top:10px"></div>
+      </div>`;
+    const pendingHost = box.querySelector('#pending');
+    if (pending.length) pending.forEach(a => pendingHost.appendChild(actionRow(a)));
+    else pendingHost.innerHTML = '<p class="muted small">Aucune action de suivi en attente dans votre périmètre.</p>';
+    const doneHost = box.querySelector('#done-list');
+    done.forEach(a => doneHost.appendChild(actionRow(a)));
+    const toggleBtn = box.querySelector('#toggle-done');
+    if (toggleBtn) toggleBtn.onclick = () => {
+      const showing = doneHost.style.display !== 'none';
+      doneHost.style.display = showing ? 'none' : '';
+      toggleBtn.textContent = showing ? 'Afficher' : 'Masquer';
+    };
+    renderShell(box);
   }
 
   /* ======================= LISTE DEMANDES ======================= */
@@ -647,7 +736,7 @@
       <div class="kpi-grid">
         ${kpi(st.total, 'Demandes au total', '', 'demandes', {})}
         ${kpi(st.sansReponse, 'Sans réponse', 'warn', 'demandes', {})}
-        ${kpi(st.engagementsEchus, 'Engagements échus', 'alert', 'demandes', {})}
+        ${kpi(st.engagementsEchus, 'Engagements échus', 'alert', 'echeances', {})}
       </div>
       <div class="card card-pad"><h3>Sujets les plus fréquents</h3>${bars(st.byCat)}</div>
       <div class="card card-pad" style="margin-top:12px"><h3>Répartition par secteur</h3>${bars(st.byEtab)}</div>
@@ -842,6 +931,7 @@
     switch (state.view) {
       case 'dashboard': viewDashboard(); break;
       case 'demandes': viewDemandes(); break;
+      case 'echeances': viewEcheances(); break;
       case 'fiche': viewFiche(); break;
       case 'reunions': viewReunions(); break;
       case 'stats': viewStats(); break;

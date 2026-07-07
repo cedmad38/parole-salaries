@@ -200,6 +200,16 @@
     await logAction('Action de suivi créée', { demandeId, detail: action.libelle || '' });
   }
   async function actionsFor(demandeId) { const { data } = await db().from('actions_suivi').select('*').eq('demande_id', demandeId); return data || []; }
+  async function updateAction(demandeId, id, patch, actor) {
+    const row = {};
+    if (patch.etat !== undefined) row.etat = patch.etat;
+    if (patch.libelle !== undefined) row.libelle = patch.libelle;
+    if (patch.responsable !== undefined) row.responsable = patch.responsable;
+    if (patch.echeance !== undefined) row.echeance = patch.echeance || null;
+    const { error } = await db().from('actions_suivi').update(row).eq('id', id);
+    if (error) throw error;
+    await logAction('Action de suivi modifiée', { demandeId, detail: patch.etat ? 'statut → ' + patch.etat : (patch.libelle || '') });
+  }
   async function reponsesFor(demandeId) { const { data } = await db().from('reponses_direction').select('*').eq('demande_id', demandeId); return data || []; }
 
   // Chargements groupés (RLS filtre à ce que l'élu a le droit de voir)
@@ -254,7 +264,7 @@
     login, logout, currentSession, listElus, updateElu,
     signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
     getDemandes, getDemande, updateDemande, addEluMessage, messagesFor, piecesFor,
-    revealIdentity, mergeDemandes, deleteDemande, addReponseDirection, addAction, actionsFor, reponsesFor,
+    revealIdentity, mergeDemandes, deleteDemande, addReponseDirection, addAction, updateAction, actionsFor, reponsesFor,
     messagesAll, actionsAll, reponsesAll,
     addQuestionReunion, questionsReunion, stats, journal, etablissements, organisation,
   };

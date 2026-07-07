@@ -1,5 +1,23 @@
 # Journal — Parole Salariés By Cedmad
 
+## Vue « Échéances » (§4.3) — 2026-07-08
+**Statut : en cours**
+
+Nouvel onglet dédié « 📅 Échéances » dans l'espace élus : regroupe toutes les actions
+de suivi (engagements pris sur une demande — libellé, responsable, échéance) de tout
+le périmètre, sur un seul écran, triées par urgence :
+- **⏰ En retard** (échéance dépassée), **🟠 Bientôt** (< 7 jours), **🗓️ À venir**,
+  **sans échéance**, puis **faites** (repliées par défaut).
+- Chaque ligne pointe vers la fiche de la demande d'origine, et peut être marquée
+  « Fait » / rouverte en un clic (nouvelle fonction `updateAction`, jusqu'ici les
+  actions ne pouvaient qu'être créées, jamais modifiées ni closes).
+- Badge sur le menu (nombre d'actions en retard) et sur le KPI « Engagements échus »
+  des statistiques, qui pointait vers une liste générique jusqu'ici.
+
+Aucune migration de base nécessaire (table `actions_suivi` et droits déjà en place).
+Logique de tri/urgence et gabarit HTML vérifiés avec des données simulées (pas de
+compte élu disponible dans cette session pour un test en conditions réelles complet).
+
 ## Détection de doublons via IA (§6.2) — 2026-07-07 / 2026-07-08
 **Statut : en cours** (déployé et testé en ligne — en attente de validation)
 

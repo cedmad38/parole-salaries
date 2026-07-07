@@ -320,6 +320,16 @@
     log(db, "Action de suivi créée", { user: actor, demandeId, detail: action.libelle || '' });
     save(db);
   }
+  function updateAction(demandeId, id, patch, actor) {
+    const db = get();
+    const a = db.actions.find(x => x.id === id); if (!a) return;
+    if (patch.etat !== undefined) a.etat = patch.etat;
+    if (patch.libelle !== undefined) a.libelle = patch.libelle;
+    if (patch.responsable !== undefined) a.responsable = patch.responsable;
+    if (patch.echeance !== undefined) a.echeance = patch.echeance || '';
+    log(db, 'Action de suivi modifiée', { user: actor, demandeId, detail: patch.etat ? 'statut → ' + patch.etat : (patch.libelle || '') });
+    save(db);
+  }
   function actionsFor(demandeId) { return get().actions.filter(a => a.demandeId === demandeId); }
   function reponsesFor(demandeId) { return get().reponses.filter(r => r.demandeId === demandeId); }
 
@@ -456,7 +466,7 @@
     createDemande, trackByRef, trackFull, addSalariePrecision,
     // élus
     login, listElus, updateElu, updateDemande, addEluMessage, messagesFor, piecesFor, identityFor,
-    mergeDemandes, deleteDemande, addReponseDirection, addAction, actionsFor, reponsesFor,
+    mergeDemandes, deleteDemande, addReponseDirection, addAction, updateAction, actionsFor, reponsesFor,
     addQuestionReunion, questionsReunion, stats,
     // helpers
     uid, now,
