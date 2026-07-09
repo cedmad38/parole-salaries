@@ -1,5 +1,25 @@
 # Journal — Parole Salariés By Cedmad
 
+## Alerte email personnelle à l'arrivée d'une demande — 2026-07-09
+**Statut : en cours**
+
+Cedmad reçoit désormais un email dès qu'une nouvelle demande est déposée par un
+salarié — pour pouvoir réagir vite sans avoir à surveiller le tableau de bord.
+
+- Envoi via Resend (service gratuit, ~3000 emails/mois offerts) depuis l'edge
+  function `classify-demande`, qui tournait déjà à chaque nouvelle demande.
+  Clé `RESEND_API_KEY` en secret Supabase, jamais côté navigateur.
+- **Uniquement à vous** (cedmad@hotmail.com) — jamais aux autres élus, qui ne
+  configurent rien et ne reçoivent rien.
+- **Uniquement au premier dépôt** de la demande, jamais sur une relance IA
+  manuelle (sinon vous recevriez un email à chaque clic sur « Régénérer »).
+- Best-effort : si l'envoi échoue (service indisponible, quota…), la
+  classification IA continue normalement — l'email n'est jamais bloquant.
+
+Testé : appel direct à l'API Resend confirmé (email accepté, HTTP 200) ; demande
+de test réelle vérifiée en base (classification IA toujours fonctionnelle après
+l'ajout du code d'envoi). Donnée de test nettoyée.
+
 ## Vue « Échéances » (§4.3) — 2026-07-08
 **Statut : en cours**
 

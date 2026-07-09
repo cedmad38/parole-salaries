@@ -9,7 +9,9 @@
 //   2) générer les 7 formulations de questions (§5) ;
 //   3) repérer des demandes existantes qui semblent parler du même sujet
 //      (§6.2) — SANS jamais fusionner ni conclure : proposition à
-//      valider par un élu.
+//      valider par un élu ;
+//   4) envoyer une alerte email à Cedmad (uniquement) à l'arrivée d'une
+//      nouvelle demande — jamais sur un réessai manuel, jamais aux autres élus.
 //
 // Garde-fous (§5.3, §9), imposés dans le prompt ET revérifiés ici :
 //   - n'utiliser QUE les faits fournis (texte brut + précisions) ;
@@ -21,8 +23,10 @@
 //   - les doublons potentiels sont une SUGGESTION, jamais une fusion
 //     automatique (validation humaine obligatoire).
 //
-// Clé nécessaire (secret de la fonction, PAS un secret de projet) :
+// Clés nécessaires (secrets de la fonction, PAS des secrets de projet) :
 //   GEMINI_API_KEY  — clé gratuite depuis https://aistudio.google.com/apikey
+//   RESEND_API_KEY  — clé gratuite depuis https://resend.com/api-keys (optionnelle :
+//                     si absente, l'alerte email est simplement ignorée)
 // Variables auto-fournies par Supabase (aucune action requise) :
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY
 // ===================================================================
@@ -119,6 +123,27 @@ ${candidatsTxt}
 Propose : la catégorie la plus pertinente (dans la liste autorisée), ton niveau de confiance, les informations qui manqueraient pour traiter le dossier, les 7 formulations demandées (courte, développée, version CSSCT orientée santé/sécurité, version CSE orientée organisation/droits collectifs, une relance en cas de réponse insuffisante, une demande chiffrée, une question pour instance centrale/multi-établissements), et les doublons potentiels parmi les demandes existantes listées ci-dessus.`;
 }
 
+// Alerte email personnelle (Cedmad uniquement) — jamais aux autres élus, jamais
+// sur un réessai manuel. Best-effort : une erreur ici ne doit jamais faire
+// échouer la classification IA (appelée en tâche de fond, sans attendre/bloquer).
+const ALERT_EMAIL_TO = "cedmad@hotmail.com";
+
+async function sendAlertEmail(d: any, publicRef: string, apiKey: string) {
+  const brut = d.texte_brut || "";
+  const extrait = brut.length > 220 ? brut.slice(0, 220) + "…" : brut;
+  const resp = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Parole Salariés <onboarding@resend.dev>",
+      to: [ALERT_EMAIL_TO],
+      subject: `Nouvelle demande — ${publicRef}`,
+      text: `Une nouvelle demande vient d'être déposée.\n\nRéférence : ${publicRef}\nInstance : ${d.instance || "—"}\n\nExtrait :\n${extrait}\n\nVoir dans l'espace élus : https://cedmad38.github.io/parole-salaries/elus.html`,
+    }),
+  });
+  if (!resp.ok) throw new Error(`Resend API ${resp.status}: ${(await resp.text().catch(() => "")).slice(0, 200)}`);
+}
+
 async function callGemini(prompt: string, apiKey: string) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
   const body = {
@@ -198,6 +223,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, skipped: true, reason: "Déjà traité." }), {
         status: 200, headers: { ...CORS, "Content-Type": "application/json" },
       });
+    }
+
+    // Alerte email — uniquement au tout premier traitement (nouvelle demande), jamais sur un
+    // réessai manuel. En tâche de fond : ne bloque jamais la réponse, ne casse jamais l'IA.
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!d.ia_traite_at && RESEND_API_KEY) {
+      sendAlertEmail(d, public_ref, RESEND_API_KEY).catch(() => {});
     }
 
     // Demandes existantes non closes, pour la détection de doublons potentiels (§6.2)
