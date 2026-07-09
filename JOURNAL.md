@@ -1,5 +1,17 @@
 # Journal — Parole Salariés By Cedmad
 
+## Ajout du secteur « Laboratoire » — 2026-07-09
+**Statut : en cours**
+
+Secteur oublié à la création de l'organisation. Ajouté aux deux endroits
+nécessaires (le commentaire de `js/config.js` précise que les deux doivent
+rester synchronisés) :
+- Table `etablissements` en base (pour l'affectation de périmètre aux élus).
+- Liste `window.PS.config.secteurs` (menu déroulant proposé au salarié).
+
+Liste finale des secteurs : Logistique, Production, Administration, ADV,
+Maintenance, Laboratoire. Vérifié dans le menu « Question rapide ».
+
 ## Alerte email personnelle à l'arrivée d'une demande — 2026-07-09
 **Statut : en cours**
 

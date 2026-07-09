@@ -32,4 +32,4 @@ window.PS.config.usernameAliases = {
 
 // Secteurs de l'organisation (proposés au salarié dans le portail).
 // Doivent correspondre aux « établissements » créés dans Supabase.
-window.PS.config.secteurs = ['Logistique', 'Production', 'Administration', 'ADV', 'Maintenance'];
+window.PS.config.secteurs = ['Logistique', 'Production', 'Administration', 'ADV', 'Maintenance', 'Laboratoire'];
