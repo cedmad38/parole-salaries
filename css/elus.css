@@ -116,6 +116,14 @@
 .bar { height: 12px; background: var(--brand-gradient); border-radius: 999px; }
 .bar-track { background: var(--surface-2); border-radius: 999px; }
 
+/* Comparaison inter-secteurs (heatmap) */
+.hm-scroll { overflow-x: auto; margin-top: 10px; }
+table.heatmap { border-collapse: collapse; font-size: .82rem; white-space: nowrap; }
+table.heatmap th, table.heatmap td { padding: 7px 10px; text-align: center; border: 1px solid var(--border); }
+table.heatmap thead th { background: var(--surface-2); color: var(--text-mute); font-weight: 600; }
+table.heatmap tbody th { text-align: left; background: var(--surface-2); color: var(--text); font-weight: 600; }
+table.heatmap td.hm-total { font-weight: 700; background: var(--surface-2); }
+
 /* Bouton d'installation PWA (flottant) */
 .pwa-install-btn {
   position: fixed; right: 16px; bottom: 16px; z-index: 9998;

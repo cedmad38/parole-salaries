@@ -1,5 +1,23 @@
 # Journal — Parole Salariés By Cedmad
 
+## Comparaison inter-secteurs (Statistiques) — 2026-07-16
+**Statut : en cours**
+
+Nouvelle carte « Comparaison par secteur » sur la page Statistiques : un
+tableau croisé secteur × catégorie (heatmap), pour repérer d'un coup d'œil
+quel secteur remonte le plus tel type de problème et prioriser où porter
+l'effort syndical.
+
+- Secteurs triés par volume total décroissant, catégories triées pareil.
+- Intensité de couleur proportionnelle à la valeur de la cellule.
+- Mêmes règles d'anonymisation que le reste de la page Statistiques : une
+  cellule en dessous du seuil anti-réidentification est masquée (« ••• »),
+  jamais affichée en clair.
+
+Vérifié : gabarit HTML testé avec des données simulées (tri, masquage,
+intensité de couleur), rendu visuel confirmé en local. Pas de compte élu
+disponible dans cette session pour un test en conditions réelles complet.
+
 ## Ajout du secteur « Laboratoire » — 2026-07-09
 **Statut : validé**
 

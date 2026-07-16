@@ -729,6 +729,33 @@
           <span>${masked ? '<span class="muted" title="Masqué (< seuil)">•••</span>' : v}</span></div>`;
       }).join('');
     };
+    // Croisement secteur × catégorie : fait ressortir d'un coup d'œil quel secteur
+    // remonte le plus tel type de problème. Mêmes règles d'anonymisation que le
+    // reste de la page (une cellule < seuil est masquée, jamais additionnée en clair).
+    const heatmap = (byEtabCat, seuilVal) => {
+      const etabs = Object.keys(byEtabCat).sort((a, b) => {
+        const totalA = Object.values(byEtabCat[a]).reduce((s, n) => s + n, 0);
+        const totalB = Object.values(byEtabCat[b]).reduce((s, n) => s + n, 0);
+        return totalB - totalA;
+      });
+      if (!etabs.length) return '<p class="muted small">Aucune donnée pour l\'instant.</p>';
+      const catTotals = {};
+      etabs.forEach(e => Object.entries(byEtabCat[e]).forEach(([c, n]) => { catTotals[c] = (catTotals[c] || 0) + n; }));
+      const cats = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+      const maxCell = Math.max(1, ...etabs.flatMap(e => cats.map(c => byEtabCat[e][c] || 0)));
+      const cellBg = (v) => v ? ` style="background:rgba(47,125,225,${(0.1 + 0.7 * (v / maxCell)).toFixed(2)})"` : '';
+      const head = `<tr><th></th>${cats.map(c => `<th>${escapeHTML(c)}</th>`).join('')}<th>Total</th></tr>`;
+      const rows = etabs.map(e => {
+        const rowTotal = cats.reduce((s, c) => s + (byEtabCat[e][c] || 0), 0);
+        const cells = cats.map(c => {
+          const v = byEtabCat[e][c] || 0;
+          const masked = v > 0 && v < seuilVal;
+          return `<td${cellBg(masked ? 0 : v)}>${v === 0 ? '' : (masked ? '<span class="muted" title="Masqué (< seuil)">•••</span>' : v)}</td>`;
+        }).join('');
+        return `<tr><th>${escapeHTML(e)}</th>${cells}<td class="hm-total">${rowTotal}</td></tr>`;
+      }).join('');
+      return `<div class="hm-scroll"><table class="heatmap"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
+    };
     const box = el('div');
     box.innerHTML = `
       <h1>Statistiques anonymisées</h1>
@@ -740,6 +767,11 @@
       </div>
       <div class="card card-pad"><h3>Sujets les plus fréquents</h3>${bars(st.byCat)}</div>
       <div class="card card-pad" style="margin-top:12px"><h3>Répartition par secteur</h3>${bars(st.byEtab)}</div>
+      <div class="card card-pad" style="margin-top:12px">
+        <h3>Comparaison par secteur</h3>
+        <p class="hint">Quel secteur remonte le plus tel type de problème — pour prioriser où porter l'effort.</p>
+        ${heatmap(st.byEtabCat, seuil)}
+      </div>
       <div class="card card-pad" style="margin-top:12px"><h3>Évolution par mois</h3>${bars(st.byMonth)}</div>`;
     renderShell(box); wireKPIs();
   }

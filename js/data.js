@@ -134,17 +134,20 @@
   /* ---------------- Statistiques (depuis l'instantané) ---------------- */
   function stats() {
     const ds = snap.demandes, seuil = snap.organisation.seuilAnonymat || 5;
-    const byCat = {}, byMonth = {}, byEtab = {};
+    const byCat = {}, byMonth = {}, byEtab = {}, byEtabCat = {};
     ds.forEach(d => {
-      byCat[d.categorie || 'Non classé'] = (byCat[d.categorie || 'Non classé'] || 0) + 1;
+      const cat = d.categorie || 'Non classé', etab = d.etablissement || '—';
+      byCat[cat] = (byCat[cat] || 0) + 1;
       byMonth[(d.createdAt || '').slice(0, 7)] = (byMonth[(d.createdAt || '').slice(0, 7)] || 0) + 1;
-      byEtab[d.etablissement || '—'] = (byEtab[d.etablissement || '—'] || 0) + 1;
+      byEtab[etab] = (byEtab[etab] || 0) + 1;
+      byEtabCat[etab] = byEtabCat[etab] || {};
+      byEtabCat[etab][cat] = (byEtabCat[etab][cat] || 0) + 1;
     });
     const today = new Date().toISOString().slice(0, 10);
     const sansReponse = ds.filter(d => !['Résolue', 'Clôturée', 'Archivée', 'Réponse reçue'].includes(d.statut)).length;
     let engagementsEchus = 0;
     Object.values(snap._acts).forEach(list => list.forEach(a => { if (a.echeance && a.echeance < today && a.etat !== 'Fait') engagementsEchus++; }));
-    return { total: ds.length, byCat, byMonth, byEtab, sansReponse, engagementsEchus, seuil };
+    return { total: ds.length, byCat, byMonth, byEtab, byEtabCat, sansReponse, engagementsEchus, seuil };
   }
 
   // Export JSON (mode local seulement ; en ligne, export via Supabase)
