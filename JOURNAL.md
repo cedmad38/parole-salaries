@@ -1,5 +1,28 @@
 # Journal — Parole Salariés By Cedmad
 
+## Correction définitive du cache navigateur figé — 2026-07-16
+**Statut : en cours**
+
+Cause racine trouvée du problème récurrent « je ne vois pas la mise à jour »
+après un déploiement (déjà rencontré avec le secteur Laboratoire, puis en
+essayant de corriger le secteur oublié d'une demande) : le service worker
+disait bien « réseau d'abord », mais son `fetch()` respectait quand même le
+cache HTTP natif du navigateur (`max-age=600` envoyé par GitHub Pages) — une
+réponse pouvait donc être servie « pas assez fraîche » sans jamais retoucher
+le réseau.
+
+- `service-worker.js` : ajout de `{ cache: 'no-store' }` sur le fetch réseau,
+  qui force désormais un vrai aller-retour serveur à chaque requête,
+  indépendamment du cache HTTP du navigateur.
+- `CACHE` passé à `v6` pour forcer l'installation du nouveau service worker.
+
+Correctif définitif, pas une consigne à refaire manuellement à chaque
+déploiement : plus besoin de vider le cache/réinstaller l'app après une mise
+à jour. Le fichier `service-worker.js` lui-même reste soumis aux mécanismes
+de mise à jour propres du navigateur (vérification à chaque navigation ou au
+plus toutes les 24h) — un premier chargement après ce déploiement peut donc
+encore nécessiter un simple rechargement, mais plus jamais après.
+
 ## Statistiques en camembert coloré — 2026-07-16
 **Statut : en cours**
 

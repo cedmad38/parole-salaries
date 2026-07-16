@@ -1,5 +1,5 @@
 /* Parole Salariés By Cedmad — Service worker (PWA offline shell) */
-const CACHE = 'parole-salaries-v5';
+const CACHE = 'parole-salaries-v6';
 const ASSETS = [
   'index.html', 'elus.html',
   'css/styles.css', 'css/portal.css', 'css/elus.css',
@@ -23,11 +23,14 @@ self.addEventListener('activate', (e) => {
 
 // RÉSEAU D'ABORD : on récupère toujours la dernière version en ligne, et on
 // met le cache à jour au passage. Repli sur le cache uniquement hors ligne.
-// (Évite le problème « je ne vois pas la mise à jour » dû à un cache figé.)
+// { cache: 'no-store' } force le navigateur à ignorer SON PROPRE cache HTTP
+// (max-age envoyé par GitHub Pages) — sans ça, cette étape « réseau d'abord »
+// pouvait quand même renvoyer une réponse plusieurs minutes périmée, d'où le
+// problème récurrent « je ne vois pas la mise à jour » après un déploiement.
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    fetch(e.request).then((resp) => {
+    fetch(e.request, { cache: 'no-store' }).then((resp) => {
       const copy = resp.clone();
       caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
       return resp;
