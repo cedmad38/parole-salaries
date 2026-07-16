@@ -149,6 +149,7 @@
   }
   async function updateDemande(id, patch) {
     const map = { statut: 'statut', categorie: 'categorie', priorite: 'priorite', eluAffecte: 'elu_affecte',
+      etablissementId: 'etablissement_id',
       notesInternes: 'notes_internes', reponsePubliee: 'reponse_publiee', motifCloture: 'motif_cloture', groupeId: 'groupe_id' };
     const row = {}; for (const k in map) if (k in patch) row[map[k]] = patch[k];
     const { error } = await db().from('demandes').update(row).eq('id', id);

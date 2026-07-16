@@ -615,11 +615,21 @@
   }
   function actionsCard(d) {
     const opts = (arr, cur) => arr.map(o => `<option ${o === cur ? 'selected' : ''}>${o}</option>`).join('');
+    // Secteur modifiable — utile quand le salarié a oublié de le renseigner (ex. « Question rapide »).
+    // Un élu gestionnaire ne peut choisir que dans son propre périmètre ; référent/admin/super-admin voient tout.
+    const allEtabs = data.etablissements();
+    const etabChoices = session.role === 'elu_gestionnaire'
+      ? allEtabs.filter(e => (session.perimetre || []).includes(e.id))
+      : allEtabs;
+    const curEtabId = d.etablissementId || (allEtabs.find(e => e.nom === d.etablissement) || {}).id || '';
+    const etabOptions = `<option value="">— Non renseigné —</option>` +
+      etabChoices.map(e => `<option value="${e.id}" ${e.id === curEtabId ? 'selected' : ''}>${escapeHTML(e.nom)}</option>`).join('');
     return `<div class="card card-pad">
       <h3>Actions (§4.3)</h3>
       <div class="field"><label>Statut</label><select id="a-statut">${opts(store.STATUTS, d.statut)}</select></div>
       <div class="field"><label>Catégorie</label><select id="a-cat"><option value="">— à classer —</option>${opts(store.CATEGORIES, d.categorie)}</select></div>
       <div class="field"><label>Priorité</label><select id="a-prio">${opts(store.PRIORITES, d.priorite)}</select></div>
+      <div class="field"><label>Secteur</label><select id="a-etab">${etabOptions}</select></div>
       <div class="field"><label>Affecter à un élu</label><input id="a-elu" type="text" placeholder="Nom de l'élu" value="${escapeHTML(d.eluAffecte || '')}"></div>
       <button class="btn btn-primary btn-sm btn-block" id="a-save" type="button">Enregistrer</button>
       <hr class="divider">
@@ -648,9 +658,18 @@
   function wireActions(box, d) {
     const q = s => box.querySelector(s);
     q('#a-save').onclick = async () => {
-      await data.updateDemande(d.id, { statut: q('#a-statut').value, categorie: q('#a-cat').value, priorite: q('#a-prio').value,
-        eluAffecte: q('#a-elu').value.trim() || null, _logAction: 'Demande mise à jour', _logDetail: `statut=${q('#a-statut').value}` }, session.nom);
-      await reload(); toast('Modifications enregistrées.'); render();
+      const etabId = q('#a-etab').value || null;
+      const etabNom = etabId ? (data.etablissements().find(e => e.id === etabId) || {}).nom || '' : '';
+      const btn = q('#a-save'); btn.disabled = true;
+      try {
+        await data.updateDemande(d.id, { statut: q('#a-statut').value, categorie: q('#a-cat').value, priorite: q('#a-prio').value,
+          etablissementId: etabId, etablissement: etabNom,
+          eluAffecte: q('#a-elu').value.trim() || null, _logAction: 'Demande mise à jour', _logDetail: `statut=${q('#a-statut').value}` }, session.nom);
+        await reload(); toast('Modifications enregistrées.'); render();
+      } catch (e) {
+        toast('Enregistrement impossible' + (e && e.message ? ' : ' + e.message : '') + '.', 'err');
+        btn.disabled = false;
+      }
     };
     q('#a-notes-save').onclick = async () => { await data.updateDemande(d.id, { notesInternes: q('#a-notes').value, _logAction: 'Notes internes modifiées' }, session.nom); await reload(); toast('Notes enregistrées.'); };
     q('#a-rep-save').onclick = async () => { const t = q('#a-rep').value.trim(); if (!t) return; await data.addReponseDirection(d.id, t, session.nom); await reload(); toast('Réponse direction enregistrée.'); render(); };

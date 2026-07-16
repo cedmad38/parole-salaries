@@ -1,5 +1,20 @@
 # Journal — Parole Salariés By Cedmad
 
+## Secteur modifiable manuellement sur une demande — 2026-07-16
+**Statut : en cours**
+
+Nouveau champ « Secteur » dans la carte Actions de la fiche demande — pour
+corriger le secteur quand le salarié l'a oublié (notamment via « Question
+rapide », qui n'impose pas cette étape).
+
+- Menu déroulant alimenté par les établissements réels de l'organisation.
+- Un élu gestionnaire ne voit et ne peut choisir que dans **son propre
+  périmètre** ; référent/admin/super-admin voient tous les secteurs.
+  Cohérent avec la règle déjà en place côté base (RLS) qui refuserait de
+  toute façon l'écriture d'un secteur hors périmètre.
+- Message d'erreur clair si l'enregistrement échoue (ex. droit refusé),
+  au lieu d'un échec silencieux.
+
 ## Comparaison inter-secteurs (Statistiques) — 2026-07-16
 **Statut : en cours**
 
