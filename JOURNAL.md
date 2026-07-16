@@ -1,5 +1,23 @@
 # Journal — Parole Salariés By Cedmad
 
+## Statistiques en camembert coloré — 2026-07-16
+**Statut : en cours**
+
+Les cartes « Sujets les plus fréquents » et « Répartition par secteur » de la
+page Statistiques passent de barres à un camembert coloré (conic-gradient CSS,
+sans librairie externe) avec légende (couleur, libellé, valeur + %).
+
+- Même règle d'anonymisation que le reste de la page : une valeur en dessous
+  du seuil est masquée dans la légende (« ••• »), la part du camembert reste
+  visible en taille réelle (même principe déjà appliqué aux barres et à la
+  heatmap : la magnitude reste visible, le chiffre exact est masqué).
+- « Évolution par mois » reste en barres (un camembert n'a pas de sens pour
+  une tendance dans le temps).
+
+Vérifié : syntaxe validée (`node --check`). Pas de vérification visuelle en
+direct possible cette fois (connecteur navigateur indisponible pendant la
+session) — à confirmer visuellement par l'utilisateur.
+
 ## Secteur modifiable manuellement sur une demande — 2026-07-16
 **Statut : en cours**
 

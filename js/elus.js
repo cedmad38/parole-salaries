@@ -748,6 +748,25 @@
           <span>${masked ? '<span class="muted" title="Masqué (< seuil)">•••</span>' : v}</span></div>`;
       }).join('');
     };
+    const PIE_COLORS = ['#2f7de1', '#2ec4a6', '#f2b134', '#e0553f', '#7c4ddb', '#0ea5a5', '#f45b8d', '#8b5e34', '#4c6ef5', '#22a06b', '#d97706', '#6d28d9'];
+    const pie = (obj) => {
+      const entries = Object.entries(obj).sort((a, b) => b[1] - a[1]);
+      const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
+      let acc = 0;
+      const stops = entries.map(([, v], i) => {
+        const start = (acc / total * 100); acc += v;
+        return `${PIE_COLORS[i % PIE_COLORS.length]} ${start.toFixed(2)}% ${(acc / total * 100).toFixed(2)}%`;
+      }).join(', ');
+      const legend = entries.map(([k, v], i) => {
+        const masked = v < seuil;
+        const pct = Math.round(v / total * 100);
+        return `<div class="pie-legend-row"><span class="pie-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></span>
+          <span class="pie-label">${escapeHTML(k)}</span>
+          <span class="pie-val">${masked ? '<span class="muted" title="Masqué (< seuil)">•••</span>' : v + ' (' + pct + '%)'}</span></div>`;
+      }).join('');
+      if (!entries.length) return '<p class="muted small">Aucune donnée pour l\'instant.</p>';
+      return `<div class="pie-wrap"><div class="pie" style="background:conic-gradient(${stops})"></div><div class="pie-legend">${legend}</div></div>`;
+    };
     // Croisement secteur × catégorie : fait ressortir d'un coup d'œil quel secteur
     // remonte le plus tel type de problème. Mêmes règles d'anonymisation que le
     // reste de la page (une cellule < seuil est masquée, jamais additionnée en clair).
@@ -784,8 +803,8 @@
         ${kpi(st.sansReponse, 'Sans réponse', 'warn', 'demandes', {})}
         ${kpi(st.engagementsEchus, 'Engagements échus', 'alert', 'echeances', {})}
       </div>
-      <div class="card card-pad"><h3>Sujets les plus fréquents</h3>${bars(st.byCat)}</div>
-      <div class="card card-pad" style="margin-top:12px"><h3>Répartition par secteur</h3>${bars(st.byEtab)}</div>
+      <div class="card card-pad"><h3>Sujets les plus fréquents</h3>${pie(st.byCat)}</div>
+      <div class="card card-pad" style="margin-top:12px"><h3>Répartition par secteur</h3>${pie(st.byEtab)}</div>
       <div class="card card-pad" style="margin-top:12px">
         <h3>Comparaison par secteur</h3>
         <p class="hint">Quel secteur remonte le plus tel type de problème — pour prioriser où porter l'effort.</p>
