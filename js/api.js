@@ -6,7 +6,7 @@
 
    Le portail salarié appelle uniquement des fonctions contrôlées
    (submit_demande, track_*, add_precision). Les élus lisent via RLS.
-   L'identité protégée passe toujours par reveal_identity (journalisée).
+   L'identité protégée passe toujours par reveal_identity.
    =================================================================== */
 (function (global) {
   'use strict';
@@ -114,7 +114,6 @@
     if ('nom' in patch) row.nom = patch.nom;
     const { error } = await db().from('elus').update(row).eq('id', id);
     if (error) throw error;
-    await logAction('Élu mis à jour', { detail: (patch.role || '') + (patch.actif === false ? ' · désactivé' : '') });
   }
 
   /* ---------------- Lecture / écriture élus ---------------- */
@@ -154,7 +153,6 @@
     const row = {}; for (const k in map) if (k in patch) row[map[k]] = patch[k];
     const { error } = await db().from('demandes').update(row).eq('id', id);
     if (error) throw error;
-    if (patch._logAction) await logAction(patch._logAction, { demandeId: id, detail: patch._logDetail || '' });
   }
   async function addEluMessage(demandeId, contenu, actor, opts) {
     opts = opts || {};
@@ -163,7 +161,6 @@
       visible_salarie: !opts.interne, interne: !!opts.interne,
     });
     if (error) throw error;
-    await logAction(opts.interne ? 'Note interne ajoutée' : 'Message envoyé au salarié', { demandeId });
   }
   async function messagesFor(demandeId) {
     const { data } = await db().from('messages').select('*').eq('demande_id', demandeId).order('created_at');
@@ -183,7 +180,6 @@
   async function mergeDemandes(masterId, ids, actor) {
     const groupe = 'grp_' + masterId;
     await db().from('demandes').update({ groupe_id: groupe }).in('id', [masterId, ...ids]);
-    await logAction('Demandes regroupées', { demandeId: masterId, detail: (ids.length + 1) + ' demandes — originaux conservés' });
     return groupe;
   }
   async function deleteDemande(id) {
@@ -193,12 +189,11 @@
   }
   async function addReponseDirection(demandeId, texte, actor) {
     await db().from('reponses_direction').insert({ demande_id: demandeId, texte });
-    await updateDemande(demandeId, { statut: 'Réponse reçue', _logAction: 'Réponse de la direction enregistrée' });
+    await updateDemande(demandeId, { statut: 'Réponse reçue' });
   }
   async function addAction(demandeId, action, actor) {
     await db().from('actions_suivi').insert({ demande_id: demandeId, libelle: action.libelle,
       responsable: action.responsable || '', echeance: action.echeance || null });
-    await logAction('Action de suivi créée', { demandeId, detail: action.libelle || '' });
   }
   async function actionsFor(demandeId) { const { data } = await db().from('actions_suivi').select('*').eq('demande_id', demandeId); return data || []; }
   async function updateAction(demandeId, id, patch, actor) {
@@ -209,7 +204,6 @@
     if (patch.echeance !== undefined) row.echeance = patch.echeance || null;
     const { error } = await db().from('actions_suivi').update(row).eq('id', id);
     if (error) throw error;
-    await logAction('Action de suivi modifiée', { demandeId, detail: patch.etat ? 'statut → ' + patch.etat : (patch.libelle || '') });
   }
   async function reponsesFor(demandeId) { const { data } = await db().from('reponses_direction').select('*').eq('demande_id', demandeId); return data || []; }
 
@@ -226,7 +220,6 @@
     const { data } = await db().from('questions_reunion').insert({
       demande_id: q.demandeId, public_ref: q.publicRef, instance: q.instance, format: q.format, texte: q.texte, statut: 'À inscrire',
     }).select().single();
-    await logAction('Question préparée pour une réunion', { demandeId: q.demandeId, detail: q.instance });
     return data;
   }
   async function questionsReunion() {
@@ -247,14 +240,6 @@
     const sansReponse = ds.filter(d => !['Résolue', 'Clôturée', 'Archivée', 'Réponse reçue'].includes(d.statut)).length;
     return { total: ds.length, byCat, byMonth, byEtab, sansReponse, engagementsEchus: 0, seuil };
   }
-  async function journal() {
-    const { data } = await db().from('journal').select('*').order('created_at', { ascending: false }).limit(200);
-    return (data || []).map(e => ({ id: e.id, date: e.created_at, action: e.action, user: e.user_label, demandeId: e.demande_id, detail: e.detail }));
-  }
-  async function logAction(action, opts) {
-    opts = opts || {};
-    try { await db().from('journal').insert({ action, user_label: (global.PS.session && global.PS.session.nom) || 'élu', demande_id: opts.demandeId || null, detail: opts.detail || '' }); } catch (e) {}
-  }
   async function etablissements() { const { data } = await db().from('etablissements').select('*'); return data || []; }
   async function organisation() { const { data } = await db().from('organisations').select('*').limit(1).single(); return data; }
 
@@ -267,6 +252,6 @@
     getDemandes, getDemande, updateDemande, addEluMessage, messagesFor, piecesFor,
     revealIdentity, mergeDemandes, deleteDemande, addReponseDirection, addAction, updateAction, actionsFor, reponsesFor,
     messagesAll, actionsAll, reponsesAll,
-    addQuestionReunion, questionsReunion, stats, journal, etablissements, organisation,
+    addQuestionReunion, questionsReunion, stats, etablissements, organisation,
   };
 })(window);

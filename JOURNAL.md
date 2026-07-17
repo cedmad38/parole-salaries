@@ -1,5 +1,45 @@
 # Journal — Parole Salariés By Cedmad
 
+## Suppression du Journal + flux automatique pour les réunions — 2026-07-16
+**Statut : en cours**
+
+Le Journal (§9, historique brut des actions) a été jugé peu utile au quotidien
+et retiré **entièrement** — menu, vue, table en base et tout le code qui
+l'alimentait — à la demande explicite de l'utilisateur (choix éclairé :
+option « retirer du menu seulement, garder les données » proposée et
+refusée).
+
+**Suppression complète :**
+- Table `journal` supprimée en base (+ ses policies), plus aucun insert nulle
+  part : 4 fonctions Postgres (`submit_demande`, `add_precision`,
+  `reveal_identity`, `delete_demande`) redéployées sans les insertions
+  journal, edge function `classify-demande` idem.
+- Code client (`js/api.js`, `js/store.js`, `js/data.js`, `js/elus.js`) :
+  fonctions `logAction`/`log()`, tous leurs appels, la vue « Journal » et
+  l'entrée de menu retirés.
+- Un vrai bug latent corrigé au passage : `openFiche()` (mode local) et le
+  bouton « Enregistrer » des paramètres organisation appelaient encore
+  `store.log(...)`, qui aurait planté après la suppression de cette fonction.
+
+**Nouveau flux pour les réunions (remplace l'usage du Journal comme pense-bête) :**
+- Les **nouvelles demandes** apparaissent désormais automatiquement dans
+  « Préparation des réunions » (statut « Nouvelle »), sans action manuelle —
+  elles sortent seules de la liste dès qu'un élu change leur statut.
+  Complète la vue « Réunions » existante (questions ajoutées depuis les
+  fiches), qui reste inchangée.
+- Les **actions de suivi** (vue Échéances), elles, doivent être ajoutées
+  manuellement à la réunion via un nouveau bouton « → Réunion » sur chaque
+  action en attente — pas d'automatisme ici, l'élu choisit lesquelles sont
+  prêtes à être présentées.
+
+Vérifié : syntaxe validée sur les 4 fichiers JS + l'edge function (aucune
+référence résiduelle à `journal`/`logAction`/`_logAction` dans tout le
+dépôt). Migration SQL confirmée en base (table absente). Edge function
+redéployée et confirmée en ligne (longueur du fichier vérifiée avant/après
+injection). Pas de vérification visuelle en direct de la nouvelle UI
+Réunions/Échéances cette fois (pas de compte élu de test disponible dans
+cette session) — à confirmer par l'utilisateur.
+
 ## Correction définitive du cache navigateur figé — 2026-07-16
 **Statut : validé**
 

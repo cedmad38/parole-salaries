@@ -232,7 +232,6 @@
       { id: 'reunions', ic: '🗂️', label: 'Réunions' },
       { id: 'stats', ic: '📈', label: 'Statistiques' },
       { id: 'qr', ic: '🔗', label: 'QR portail' },
-      { id: 'journal', ic: '📝', label: 'Journal' },
     ];
     if (['admin_cse', 'super_admin'].includes(session.role)) nav.push({ id: 'admin', ic: '⚙️', label: 'Administration' });
 
@@ -363,7 +362,10 @@
         </div>
         <div class="right">
           <div class="small muted">${a.echeance ? fmtDay(a.echeance) : '—'}</div>
-          ${editable ? `<button class="btn btn-ghost btn-sm" data-act="toggle" type="button" style="margin-top:4px">${a.etat === 'Fait' ? 'Rouvrir' : 'Marquer fait'}</button>` : ''}
+          <div class="row" style="margin-top:4px;gap:6px">
+            ${editable && a.urgency !== 'done' ? `<button class="btn btn-ghost btn-sm" data-act="reunion" type="button">→ Réunion</button>` : ''}
+            ${editable ? `<button class="btn btn-ghost btn-sm" data-act="toggle" type="button">${a.etat === 'Fait' ? 'Rouvrir' : 'Marquer fait'}</button>` : ''}
+          </div>
         </div>`;
       const btn = node.querySelector('[data-act="toggle"]');
       if (btn) btn.onclick = async (ev) => {
@@ -372,6 +374,14 @@
           await data.updateAction(d.id, a.id, { etat: a.etat === 'Fait' ? 'À faire' : 'Fait' }, session.nom);
           await reload(); toast(a.etat === 'Fait' ? 'Action rouverte.' : 'Action marquée comme faite.'); render();
         } catch (e) { toast('Mise à jour impossible.', 'err'); btn.disabled = false; }
+      };
+      const rb = node.querySelector('[data-act="reunion"]');
+      if (rb) rb.onclick = async (ev) => {
+        ev.stopPropagation(); rb.disabled = true;
+        try {
+          await data.addQuestionReunion({ demandeId: d.id, publicRef: d.publicRef, instance: d.instance, format: 'Action de suivi', texte: a.libelle }, session.nom);
+          await reload(); toast('Action ajoutée à la préparation de réunion.'); render();
+        } catch (e) { toast('Ajout impossible.', 'err'); rb.disabled = false; }
       };
       return node;
     };
@@ -457,8 +467,7 @@
     const d = data.demandeById(id);
     if (!d) return;
     if (!data.online() && !canSeeDemande(d)) {
-      const db = store.get(); store.log(db, 'ACCÈS REFUSÉ (hors périmètre)', { user: session.nom, demandeId: d.id, detail: d.etablissement }); store.save(db);
-      toast('Accès refusé : ce dossier est hors de votre périmètre. Tentative journalisée.', 'err'); return;
+      toast('Accès refusé : ce dossier est hors de votre périmètre.', 'err'); return;
     }
     state.currentId = id; state.view = 'fiche'; render();
   }
@@ -608,7 +617,7 @@
     if (access.visible && access.data) {
       return `<div class="notice ${access.sensitive ? 'notice-warn' : 'notice-info'}"><span class="ico">${access.sensitive ? '🔓' : '👤'}</span>
         <div><strong>${escapeHTML(access.data.nom || 'Non renseigné')}</strong><br>${escapeHTML(access.data.contact || '')}
-        ${access.sensitive ? '<br><span class="small">Accès référent — consultation journalisée.</span>' : ''}</div></div>`;
+        ${access.sensitive ? '<br><span class="small">Accès référent.</span>' : ''}</div></div>`;
     }
     return `<div class="notice notice-info"><span class="ico">🕶️</span><div>${escapeHTML(access.reason || 'Identité non accessible.')}
       ${access.protected ? '<br><span class="small">Seul le référent confidentiel peut y accéder.</span>' : ''}</div></div>`;
@@ -652,7 +661,7 @@
       ${canDelete() ? `
       <hr class="divider">
       <button class="btn btn-danger btn-sm btn-block" id="a-delete" type="button" style="background:#8a1c14">🗑️ Supprimer la demande</button>
-      <p class="hint" style="margin-top:6px">Réservé à l'administration. Suppression <strong>définitive</strong> (spam / hors sujet), tracée dans le journal.</p>` : ''}
+      <p class="hint" style="margin-top:6px">Réservé à l'administration. Suppression <strong>définitive</strong> (spam / hors sujet).</p>` : ''}
     </div>`;
   }
   function wireActions(box, d) {
@@ -664,30 +673,30 @@
       try {
         await data.updateDemande(d.id, { statut: q('#a-statut').value, categorie: q('#a-cat').value, priorite: q('#a-prio').value,
           etablissementId: etabId, etablissement: etabNom,
-          eluAffecte: q('#a-elu').value.trim() || null, _logAction: 'Demande mise à jour', _logDetail: `statut=${q('#a-statut').value}` }, session.nom);
+          eluAffecte: q('#a-elu').value.trim() || null }, session.nom);
         await reload(); toast('Modifications enregistrées.'); render();
       } catch (e) {
         toast('Enregistrement impossible' + (e && e.message ? ' : ' + e.message : '') + '.', 'err');
         btn.disabled = false;
       }
     };
-    q('#a-notes-save').onclick = async () => { await data.updateDemande(d.id, { notesInternes: q('#a-notes').value, _logAction: 'Notes internes modifiées' }, session.nom); await reload(); toast('Notes enregistrées.'); };
+    q('#a-notes-save').onclick = async () => { await data.updateDemande(d.id, { notesInternes: q('#a-notes').value }, session.nom); await reload(); toast('Notes enregistrées.'); };
     q('#a-rep-save').onclick = async () => { const t = q('#a-rep').value.trim(); if (!t) return; await data.addReponseDirection(d.id, t, session.nom); await reload(); toast('Réponse direction enregistrée.'); render(); };
-    q('#a-pub-save').onclick = async () => { await data.updateDemande(d.id, { reponsePubliee: q('#a-pub').value.trim(), _logAction: 'Réponse publiée au salarié' }, session.nom); await reload(); toast('Réponse publiée pour le salarié.'); };
+    q('#a-pub-save').onclick = async () => { await data.updateDemande(d.id, { reponsePubliee: q('#a-pub').value.trim() }, session.nom); await reload(); toast('Réponse publiée pour le salarié.'); };
     q('#act-save').onclick = async () => {
       const lib = q('#act-lib').value.trim(); if (!lib) { toast('Décrivez l\'action.', 'err'); return; }
       await data.addAction(d.id, { libelle: lib, responsable: q('#act-resp').value.trim(), echeance: q('#act-ech').value }, session.nom);
-      await data.updateDemande(d.id, { statut: 'Action à suivre', _logAction: 'Passage en action à suivre' }, session.nom);
+      await data.updateDemande(d.id, { statut: 'Action à suivre' }, session.nom);
       await reload(); toast('Action de suivi ajoutée.'); render();
     };
     q('#a-close').onclick = async () => {
       const motif = prompt('Motif de clôture :', 'Traité'); if (motif == null) return;
-      await data.updateDemande(d.id, { statut: 'Clôturée', motifCloture: motif, _logAction: 'Dossier clôturé', _logDetail: motif }, session.nom);
+      await data.updateDemande(d.id, { statut: 'Clôturée', motifCloture: motif }, session.nom);
       await reload(); toast('Dossier clôturé.'); render();
     };
     const del = q('#a-delete');
     if (del) del.onclick = async () => {
-      if (!confirm('Supprimer DÉFINITIVEMENT cette demande ?\n\nCette action est irréversible et sera tracée dans le journal.')) return;
+      if (!confirm('Supprimer DÉFINITIVEMENT cette demande ?\n\nCette action est irréversible.')) return;
       try {
         await data.deleteDemande(d.id, session.nom);
         await reload(); toast('Demande supprimée.'); state.view = 'demandes'; render();
@@ -715,10 +724,20 @@
   /* ======================= RÉUNIONS (§7) ======================= */
   function viewReunions() {
     const qs = data.questionsReunion();
+    // Les nouvelles demandes arrivent automatiquement ici — rien à cocher, elles
+    // sortent seules de la liste dès que leur statut change (traitées ailleurs).
+    const nouvelles = visibleDemandes().filter(d => d.statut === 'Nouvelle')
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     const box = el('div');
     box.innerHTML = `
       <h1>Préparation des réunions</h1>
-      <p class="page-sub">Questions ajoutées depuis les fiches. Exportez la version anonymisée à communiquer, ou la version complète réservée aux élus.</p>
+      <p class="page-sub">Les nouvelles demandes arrivent automatiquement ci-dessous. Les actions de suivi doivent être ajoutées manuellement depuis « Échéances ».</p>
+      <div class="card card-pad" style="margin-bottom:14px">
+        <h3>Nouvelles demandes à présenter ${nouvelles.length ? badge(String(nouvelles.length), 'primary') : ''}</h3>
+        <div id="new-list"></div>
+      </div>
+      <h3 style="margin-bottom:8px">Questions préparées</h3>
+      <p class="hint" style="margin-top:0">Ajoutées depuis une fiche (« → Réunion ») ou depuis une action de suivi. Exportez la version anonymisée à communiquer, ou la version complète réservée aux élus.</p>
       <div class="row" style="margin-bottom:14px">
         <button class="btn btn-primary btn-sm" id="ex-word" type="button">Export Word</button>
         <button class="btn btn-ghost btn-sm" id="ex-pdf" type="button">Export PDF</button>
@@ -727,6 +746,9 @@
         <label class="small" style="display:flex;gap:6px;align-items:center;font-weight:400"><input type="checkbox" id="ex-full" style="width:auto"> Version complète (élus)</label>
       </div>
       <div id="q-list"></div>`;
+    const newHost = box.querySelector('#new-list');
+    if (!nouvelles.length) newHost.innerHTML = '<p class="muted small">Aucune nouvelle demande en attente.</p>';
+    nouvelles.forEach(d => newHost.appendChild(demItem(d)));
     const host = box.querySelector('#q-list');
     if (!qs.length) host.innerHTML = '<p class="muted">Aucune question préparée. Depuis une fiche, cliquez « → Réunion » sur une formulation.</p>';
     qs.forEach(q => host.appendChild(el('div', { class: 'formul', html: `<h4>${escapeHTML(q.format)} · ${escapeHTML(q.instance)} <span class="badge badge-mute">${escapeHTML(q.publicRef || '')}</span></h4><div class="txt">${escapeHTML(q.texte)}</div>` })));
@@ -832,19 +854,6 @@
     box.querySelector('#copy-url').onclick = async () => { try { await navigator.clipboard.writeText(portalURL); toast('Lien copié.'); } catch (e) { toast('Copie impossible.', 'err'); } };
   }
 
-  /* ======================= JOURNAL (§9) ======================= */
-  function viewJournal() {
-    const j = data.journal().slice(0, 200);
-    const box = el('div');
-    box.innerHTML = `<h1>Journal des actions</h1><p class="page-sub">Traçabilité des accès, modifications et actions sensibles (§9).</p><div class="card card-pad" id="j"></div>`;
-    const host = box.querySelector('#j');
-    host.innerHTML = j.map(e => `<div class="row-between" style="padding:8px 0;border-bottom:1px solid var(--border)">
-      <div><strong>${escapeHTML(e.action)}</strong>${e.detail ? ' — <span class="muted small">' + escapeHTML(e.detail) + '</span>' : ''}<br>
-      <span class="small muted">${escapeHTML(e.user)}${e.demandeId ? ' · dossier ' + escapeHTML((data.demandeById(e.demandeId) || {}).publicRef || '') : ''}</span></div>
-      <span class="small muted">${fmtDate(e.date)}</span></div>`).join('') || '<p class="muted">Journal vide.</p>';
-    renderShell(box);
-  }
-
   /* ======================= ADMINISTRATION ======================= */
   // Description des droits réels de chaque rôle (cohérente avec canEdit/canDelete/identityFor/RLS)
   const ROLE_DETAILS = [
@@ -853,23 +862,23 @@
       can: [], cant: ['Se connecter au tableau de bord', 'Voir la moindre demande', 'Toute action'] },
     { role: 'elu_lecteur', label: 'Élu lecteur', tag: 'Lecture seule', color: 'mute',
       desc: "Consultation des dossiers de ses secteurs autorisés uniquement.",
-      can: ['Consulter les demandes de ses secteurs', 'Consulter les statistiques et le journal'],
+      can: ['Consulter les demandes de ses secteurs', 'Consulter les statistiques'],
       cant: ['Modifier une demande, un statut, une catégorie', 'Échanger avec un salarié', 'Voir une identité protégée', 'Supprimer une demande', 'Gérer les élus'] },
     { role: 'elu_gestionnaire', label: 'Élu gestionnaire', tag: 'Traitement', color: 'primary',
       desc: "Traite les dossiers de ses secteurs autorisés au quotidien.",
       can: ['Classer, prioriser, affecter une demande', 'Échanger avec le salarié et ajouter des notes internes', 'Ajouter réponses direction / actions de suivi', 'Préparer des questions de réunion', 'Exporter (Word/PDF/copie)'],
       cant: ['Voir une identité « confidentiel élus »', 'Supprimer une demande', 'Gérer les élus ou les paramètres', 'Sortir de son périmètre (secteurs)'] },
     { role: 'referent_confidentiel', label: 'Référent confidentiel', tag: 'Identités protégées', color: 'warn',
-      desc: "Même travail qu'un gestionnaire, avec deux droits supplémentaires réservés : voir les identités des demandes « confidentiel élus » et supprimer les demandes farfelues/spam. Chaque action sensible est journalisée.",
-      can: ['Tout ce que fait un élu gestionnaire (dans ses secteurs)', 'Voir les identités « confidentiel élus » (accès tracé)', 'Supprimer une demande (spam/hors sujet), action journalisée'],
+      desc: "Même travail qu'un gestionnaire, avec deux droits supplémentaires réservés : voir les identités des demandes « confidentiel élus » et supprimer les demandes farfelues/spam.",
+      can: ['Tout ce que fait un élu gestionnaire (dans ses secteurs)', 'Voir les identités « confidentiel élus »', 'Supprimer une demande (spam/hors sujet)'],
       cant: ['Gérer les élus ou les paramètres', 'Sortir de son périmètre (secteurs)'] },
     { role: 'admin_cse', label: 'Administrateur CSE', tag: 'Administration', color: 'primary',
       desc: "Gère l'outil pour toute l'organisation : tous les secteurs, sans restriction de périmètre.",
-      can: ['Tout ce que fait un élu gestionnaire, sur TOUS les secteurs', 'Supprimer une demande (spam/hors sujet), action journalisée', 'Gérer les élus : rôle, secteurs, activer/désactiver un compte', 'Réinitialiser le mot de passe d\'un élu', 'Modifier les paramètres (seuil anti-réidentification, conservation)'],
+      can: ['Tout ce que fait un élu gestionnaire, sur TOUS les secteurs', 'Supprimer une demande (spam/hors sujet)', 'Gérer les élus : rôle, secteurs, activer/désactiver un compte', 'Réinitialiser le mot de passe d\'un élu', 'Modifier les paramètres (seuil anti-réidentification, conservation)'],
       cant: ['Voir une identité « confidentiel élus » (réservé au référent et au super-admin)'] },
     { role: 'super_admin', label: 'Super-administrateur', tag: 'Accès total', color: 'danger',
       desc: "Rôle du propriétaire technique de l'outil. Cumule tous les droits, y compris ceux du référent confidentiel.",
-      can: ['Tout ce que fait un administrateur CSE, sur tous les secteurs', 'Voir les identités « confidentiel élus » (comme le référent, accès tracé)'],
+      can: ['Tout ce que fait un administrateur CSE, sur tous les secteurs', 'Voir les identités « confidentiel élus » (comme le référent)'],
       cant: ["Voir l'identité d'une demande « anonyme total » (aucune identité n'est jamais enregistrée pour ce niveau, pour personne)"] },
   ];
   function supaUsersUrl() {
@@ -975,7 +984,7 @@
       const db = store.get();
       db.organisation.seuilAnonymat = Math.max(1, parseInt(box.querySelector('#seuil').value, 10) || 5);
       db.organisation.conservationJours = Math.max(30, parseInt(box.querySelector('#cons').value, 10) || 365);
-      store.log(db, 'Paramètres organisation modifiés', { user: session.nom }); store.save(db); toast('Paramètres enregistrés.');
+      store.save(db); toast('Paramètres enregistrés.');
     };
     box.querySelector('#export-json').onclick = () => {
       const blob = new Blob([data.exportAll()], { type: 'application/json' });
@@ -1006,7 +1015,6 @@
       case 'reunions': viewReunions(); break;
       case 'stats': viewStats(); break;
       case 'qr': viewQR(); break;
-      case 'journal': viewJournal(); break;
       case 'admin': viewAdmin(); break;
       default: viewDashboard();
     }

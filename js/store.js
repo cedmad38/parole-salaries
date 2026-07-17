@@ -107,7 +107,6 @@
       questions: [],   // questions de réunion
       reponses: [],
       actions: [],
-      journal: [],
       reunions: [],
     };
   }
@@ -127,18 +126,6 @@
   function get() {
     let db = load();
     if (!db) { db = seed(); save(db); }
-    return db;
-  }
-
-  /* ---------------- Journalisation (§9) ------------- */
-  function log(db, action, opts) {
-    opts = opts || {};
-    db.journal.unshift({
-      id: uid('log'), date: now(), action,
-      user: opts.user || 'système',
-      demandeId: opts.demandeId || null,
-      detail: opts.detail || '',
-    });
     return db;
   }
 
@@ -193,7 +180,6 @@
       });
     });
 
-    log(db, 'Nouvelle demande déposée', { user: 'salarié', demandeId: demande.id, detail: `${type.label} — ${CONFIDENTIALITE[demande.confidentialite].label}` });
     save(db);
     return { publicRef, secret, id: demande.id };
   }
@@ -229,7 +215,6 @@
       contenu: texte, date: now(), visibleSalarie: true, interne: false,
     });
     d.updatedAt = now();
-    log(db, 'Précision ajoutée par le salarié', { user: 'salarié', demandeId: d.id });
     save(db);
     return true;
   }
@@ -244,7 +229,7 @@
     if (c === 'anonyme_total') return { visible: false, reason: 'Demande anonyme — aucune identité enregistrée.' };
     if (!id) return { visible: false, reason: 'Aucune coordonnée fournie.' };
 
-    // Référent confidentiel + super-administrateur (propriétaire) : accès total, journalisé
+    // Référent confidentiel + super-administrateur (propriétaire) : accès total
     if (role === 'referent_confidentiel' || role === 'super_admin') {
       return { visible: true, data: id, sensitive: c === 'confidentiel_elus' };
     }
@@ -265,8 +250,6 @@
     if (!d) return null;
     Object.assign(d, patch);
     d.updatedAt = now();
-    if (patch._logAction) log(db, patch._logAction, { user: actor, demandeId: id, detail: patch._logDetail || '' });
-    delete d._logAction; delete d._logDetail;
     save(db);
     return d;
   }
@@ -281,7 +264,6 @@
     });
     const d = db.demandes.find(x => x.id === demandeId);
     if (d) d.updatedAt = now();
-    log(db, opts.interne ? 'Note interne ajoutée' : 'Message envoyé au salarié', { user: actor, demandeId });
     save(db);
   }
   function messagesFor(demandeId) {
@@ -299,7 +281,6 @@
       const d = db.demandes.find(x => x.id === i);
       if (d) { d.groupeId = groupe; d.updatedAt = now(); }
     });
-    log(db, 'Demandes regroupées', { user: actor, demandeId: masterId, detail: `${ids.length + 1} demandes — originaux conservés` });
     save(db);
     return groupe;
   }
@@ -308,7 +289,7 @@
   function addReponseDirection(demandeId, texte, actor) {
     const db = get();
     db.reponses.push({ id: uid('rep'), demandeId, texte, date: now(), auteur: 'Direction (déclaré)', qualite: null });
-    updateDemande(demandeId, { statut: 'Réponse reçue', _logAction: 'Réponse de la direction enregistrée', _logDetail: '' }, actor);
+    updateDemande(demandeId, { statut: 'Réponse reçue' }, actor);
     return db.reponses;
   }
   function addAction(demandeId, action, actor) {
@@ -317,7 +298,6 @@
       id: uid('act'), demandeId, responsable: action.responsable || '', echeance: action.echeance || '',
       etat: 'À faire', libelle: action.libelle || '', createdAt: now(),
     });
-    log(db, "Action de suivi créée", { user: actor, demandeId, detail: action.libelle || '' });
     save(db);
   }
   function updateAction(demandeId, id, patch, actor) {
@@ -327,7 +307,6 @@
     if (patch.libelle !== undefined) a.libelle = patch.libelle;
     if (patch.responsable !== undefined) a.responsable = patch.responsable;
     if (patch.echeance !== undefined) a.echeance = patch.echeance || '';
-    log(db, 'Action de suivi modifiée', { user: actor, demandeId, detail: patch.etat ? 'statut → ' + patch.etat : (patch.libelle || '') });
     save(db);
   }
   function actionsFor(demandeId) { return get().actions.filter(a => a.demandeId === demandeId); }
@@ -338,7 +317,6 @@
     const db = get();
     const item = { id: uid('q'), ...q, createdAt: now() };
     db.questions.push(item);
-    log(db, 'Question préparée pour une réunion', { user: actor, demandeId: q.demandeId, detail: q.instance });
     save(db);
     return item;
   }
@@ -366,8 +344,6 @@
     const db = get();
     const u = db.users.find(x => x.email.toLowerCase() === (email || '').toLowerCase() && x.pass === pass);
     if (!u || u.actif === false) return null;
-    log(db, 'Connexion espace élus', { user: u.nom, detail: ROLES[u.role].label });
-    save(db);
     return { id: u.id, nom: u.nom, role: u.role, perimetre: u.perimetre, email: u.email };
   }
   function listElus() {
@@ -381,7 +357,6 @@
     if ('perimetre' in patch) u.perimetre = patch.perimetre;
     if ('actif' in patch) u.actif = patch.actif;
     if ('nom' in patch) u.nom = patch.nom;
-    log(db, 'Élu mis à jour', { user: actor || 'admin', detail: patch.role || '' });
     save(db);
   }
 
@@ -432,7 +407,6 @@
       if (x.confidentialite !== 'anonyme_total' && (x.nom || x.contact)) {
         db.identites[d.id] = { nom: x.nom || '', contact: x.contact || '', niveau: x.confidentialite, createdAt: d.createdAt };
       }
-      db.journal.push({ id: uid('log'), date: d.createdAt, action: 'Nouvelle demande déposée', user: 'salarié', demandeId: d.id, detail: type.label });
     });
 
     return db;
@@ -440,8 +414,6 @@
 
   function deleteDemande(id, actor) {
     const db = get();
-    const d = db.demandes.find(x => x.id === id);
-    log(db, 'Demande supprimée', { user: actor || 'élu', demandeId: null, detail: d ? d.publicRef : '' });
     db.demandes = db.demandes.filter(x => x.id !== id);
     delete db.identites[id];
     db.messages = db.messages.filter(m => m.demandeId !== id);
@@ -461,7 +433,7 @@
     // référentiels
     CONFIDENTIALITE, TYPES, CATEGORIES, STATUTS, STATUT_COLOR, PRIORITES, ROLES,
     // accès
-    get, save, resetDemo, exportAll, log,
+    get, save, resetDemo, exportAll,
     // salarié
     createDemande, trackByRef, trackFull, addSalariePrecision,
     // élus

@@ -2,9 +2,9 @@
 -- Parole Salariés By Cedmad — Schéma Supabase (PostgreSQL)
 -- -------------------------------------------------------------------
 -- À exécuter UNE FOIS dans Supabase : SQL Editor → coller → Run.
--- Implémente le modèle de données §15 + la sécurité §8/§9 :
+-- Implémente le modèle de données §15 + la sécurité §8 :
 --   • l'identité protégée est dans une table séparée, VERROUILLÉE
---     (accessible uniquement via la fonction reveal_identity, journalisée) ;
+--     (accessible uniquement via la fonction reveal_identity) ;
 --   • le portail salarié (anonyme) n'a AUCUN accès direct aux tables :
 --     il passe par des fonctions contrôlées (submit_demande, track_*) ;
 --   • les élus ne voient que leur périmètre ; le référent seul voit les
@@ -136,15 +136,6 @@ create table if not exists actions_suivi (
   created_at timestamptz not null default now()
 );
 
-create table if not exists journal (
-  id uuid primary key default gen_random_uuid(),
-  action text not null,
-  user_label text not null default 'système',
-  demande_id uuid references demandes(id) on delete set null,
-  detail text default '',
-  created_at timestamptz not null default now()
-);
-
 -- Mise à jour automatique de updated_at
 create or replace function public.touch_updated_at()
 returns trigger language plpgsql as $$
@@ -196,7 +187,6 @@ alter table pieces            enable row level security;
 alter table questions_reunion enable row level security;
 alter table reponses_direction enable row level security;
 alter table actions_suivi     enable row level security;
-alter table journal           enable row level security;
 
 -- Référentiels lisibles par les élus connectés
 create policy org_read   on organisations  for select to authenticated using (true);
@@ -246,12 +236,8 @@ create policy act_write on actions_suivi for insert to authenticated
 create policy act_update on actions_suivi for update to authenticated
   using (public.is_admin() or public.is_referent() or public.elu_role() = 'elu_gestionnaire');
 
--- Journal : lecture par les élus, ajout autorisé (traçabilité §9)
-create policy jrn_read on journal for select to authenticated using (true);
-create policy jrn_insert on journal for insert to authenticated with check (true);
-
 -- NB : la table `identites` reste sans policy select => accès direct refusé.
--- Elle n'est lue que via reveal_identity() (security definer, journalisée).
+-- Elle n'est lue que via reveal_identity() (security definer).
 
 -- ------------------------------------------------------------------
 -- 4. CRÉATION AUTO DU PROFIL ÉLU à l'inscription
@@ -328,9 +314,6 @@ begin
     end loop;
   end if;
 
-  insert into public.journal (action, user_label, demande_id, detail)
-  values ('Nouvelle demande déposée', 'salarié', v_id, v_type);
-
   return jsonb_build_object('public_ref', v_ref, 'secret', v_secret);
 end $$;
 
@@ -372,12 +355,11 @@ begin
   if not found or crypt(trim(p_secret), d.secret_hash) <> d.secret_hash then return false; end if;
   insert into public.messages (demande_id, auteur, role, contenu, visible_salarie, interne)
   values (d.id, 'Salarié', 'salarie', p_contenu, true, false);
-  insert into public.journal (action, user_label, demande_id) values ('Précision ajoutée par le salarié', 'salarié', d.id);
   return true;
 end $$;
 
 -- ------------------------------------------------------------------
--- 6. RÉVÉLATION D'IDENTITÉ (élus) — contrôlée + JOURNALISÉE (§8/§9)
+-- 6. RÉVÉLATION D'IDENTITÉ (élus) — contrôlée (§8)
 -- ------------------------------------------------------------------
 create or replace function public.reveal_identity(p_demande uuid)
 returns jsonb language plpgsql security definer set search_path = public as $$
@@ -401,14 +383,11 @@ begin
   select nom, contact into v_nom, v_contact from public.identites where demande_id = p_demande;
   if not found then return jsonb_build_object('visible', false, 'reason', 'Aucune coordonnée fournie.'); end if;
 
-  insert into public.journal (action, user_label, demande_id, detail)
-  values ('Consultation identité protégée', coalesce(public.elu_nom(),'élu'), p_demande, v_conf);
-
   return jsonb_build_object('visible', true, 'nom', v_nom, 'contact', v_contact,
     'sensitive', v_conf = 'confidentiel_elus');
 end $$;
 
--- Suppression d'une demande « farfelue » / spam — réservé référent, admin & super-admin, journalisée
+-- Suppression d'une demande « farfelue » / spam — réservé référent, admin & super-admin
 create or replace function public.delete_demande(p_id uuid)
 returns boolean language plpgsql security definer set search_path = public as $$
 declare v_role text; v_ref text;
@@ -417,8 +396,6 @@ begin
   if v_role is null or v_role not in ('referent_confidentiel', 'admin_cse', 'super_admin') then raise exception 'Non autorisé'; end if;
   select public_ref into v_ref from public.demandes where id = p_id;
   if v_ref is null then return false; end if;
-  insert into public.journal (action, user_label, detail)
-  values ('Demande supprimée', coalesce(public.elu_nom(), 'élu'), v_ref);
   delete from public.demandes where id = p_id;  -- cascade : identités, messages, pièces, etc.
   return true;
 end $$;

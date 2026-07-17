@@ -261,13 +261,6 @@ Deno.serve(async (req) => {
       ia_traite_at: new Date().toISOString(),
     }).eq("id", d.id);
 
-    await admin.from("journal").insert({
-      action: "Classification IA (Gemini) appliquée",
-      user_label: isSuperAdmin ? "IA (Gemini) — relance Cedmad" : "IA (Gemini)",
-      demande_id: d.id,
-      detail: categorie + (doublons.length ? ` · ${doublons.length} doublon(s) potentiel(s)` : ""),
-    });
-
     return new Response(JSON.stringify({ ok: true, categorie, confiance: result.confiance, formulations, doublons }), {
       status: 200, headers: { ...CORS, "Content-Type": "application/json" },
     });

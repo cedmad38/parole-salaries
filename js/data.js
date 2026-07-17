@@ -6,9 +6,9 @@
    • Sinon → mode LOCAL (PS.store / navigateur), pour tester sans base.
 
    Pour garder les écrans élus simples, un « instantané » (snapshot) est
-   chargé (loadElus) : demandes, journal, établissements + détails
+   chargé (loadElus) : demandes, établissements + détails
    (messages/actions/réponses) préchargés. L'identité protégée reste,
-   elle, chargée à la demande (et journalisée) via revealIdentity.
+   elle, chargée à la demande via revealIdentity.
    =================================================================== */
 (function (global) {
   'use strict';
@@ -17,7 +17,7 @@
   const online = () => !!(global.PS.config && global.PS.config.online && global.PS.api);
 
   const snap = {
-    demandes: [], journal: [], etablissements: [], organisation: { seuilAnonymat: 5 },
+    demandes: [], etablissements: [], organisation: { seuilAnonymat: 5 },
     questions: [], _msgs: {}, _acts: {}, _reps: {},
   };
 
@@ -67,18 +67,17 @@
   /* ---------------- Chargement de l'instantané élus ---------------- */
   async function loadElus() {
     if (online()) {
-      const [demandes, journal, etabs, org, questions, msgs, acts, reps] = await Promise.all([
-        api().getDemandes(), api().journal(), api().etablissements(), api().organisation(),
+      const [demandes, etabs, org, questions, msgs, acts, reps] = await Promise.all([
+        api().getDemandes(), api().etablissements(), api().organisation(),
         api().questionsReunion(), api().messagesAll(), api().actionsAll(), api().reponsesAll(),
       ]);
-      snap.demandes = demandes; snap.journal = journal;
+      snap.demandes = demandes;
       snap.etablissements = (etabs || []).map(e => ({ id: e.id, nom: e.nom }));
       snap.organisation = normOrg(org); snap.questions = questions;
       snap._msgs = groupBy(msgs, 'demandeId'); snap._acts = groupBy(acts, 'demandeId'); snap._reps = groupBy(reps, 'demandeId');
     } else {
       const db = store().get();
       snap.demandes = db.demandes.slice();
-      snap.journal = db.journal.slice();
       snap.etablissements = db.etablissements.map(e => ({ id: e.id, nom: e.nom }));
       snap.organisation = normOrg(db.organisation);
       snap.questions = db.questions.slice();
@@ -89,7 +88,6 @@
   // Lectures synchrones depuis l'instantané
   const demandes        = () => snap.demandes;
   const demandeById     = (id) => snap.demandes.find(d => d.id === id);
-  const journal         = () => snap.journal;
   const etablissements  = () => snap.etablissements;
   const organisation    = () => snap.organisation;
   const questionsReunion = () => snap.questions;
@@ -107,7 +105,7 @@
   };
   const reponsesFor     = (id) => snap._reps[id] || [];
 
-  // Identité protégée : chargée à la demande (et journalisée en ligne)
+  // Identité protégée : chargée à la demande
   async function revealIdentity(d, role) {
     return online() ? api().revealIdentity(d.id) : store().identityFor(d, role);
   }
@@ -159,7 +157,7 @@
     createDemande, trackByRef, trackFull, addSalariePrecision,
     login, logout, currentSession, listElus, updateElu,
     signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
-    loadElus, demandes, demandeById, journal, etablissements, organisation, questionsReunion,
+    loadElus, demandes, demandeById, etablissements, organisation, questionsReunion,
     messagesFor, actionsFor, allActions, reponsesFor, revealIdentity,
     updateDemande, addEluMessage, addReponseDirection, addAction, updateAction, addQuestionReunion, mergeDemandes, deleteDemande, classifyDemande,
     stats, exportAll,
