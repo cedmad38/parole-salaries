@@ -1,5 +1,26 @@
 # Journal — Parole Salariés By Cedmad
 
+## Onglet Archives + Échéances allégée — 2026-07-16
+**Statut : en cours**
+
+Réorganisation demandée : les actions de suivi doivent rester visibles dans
+Échéances tant qu'elles ne sont pas faites (jamais masquées derrière un
+« Afficher »), puis basculer dans un nouvel onglet **Archives** une fois
+clôturées — avec, en dessous, les demandes elles-mêmes clôturées/résolues.
+
+- **Échéances** : ne montre plus que les actions actives, triées par
+  urgence. Le bloc « Faites » repliable a disparu — une action marquée
+  faite quitte directement la vue au lieu de rester cachée dedans.
+- **Nouvel onglet Archives** : deux sections — « Actions de suivi faites »
+  en haut, « Demandes clôturées » (statuts Clôturée/Archivée/Résolue) en
+  bas. Le KPI « Faites » d'Échéances et celui des Statistiques pointent
+  maintenant vers Archives.
+- Gabarit de ligne d'action factorisé (`actionRow`) pour éviter la
+  duplication entre Échéances et Archives.
+
+Vérifié : syntaxe validée (`node --check`). Pas de serveur de prévisualisation
+local disponible cette fois — à tester en ligne après déploiement.
+
 ## Suppression du Journal + flux automatique pour les réunions — 2026-07-16
 **Statut : en cours**
 

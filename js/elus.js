@@ -230,6 +230,7 @@
       { id: 'demandes', ic: '📥', label: 'Demandes', n: c.nouvelles || '' },
       { id: 'echeances', ic: '📅', label: 'Échéances', n: overdue || '' },
       { id: 'reunions', ic: '🗂️', label: 'Réunions' },
+      { id: 'archives', ic: '🗄️', label: 'Archives' },
       { id: 'stats', ic: '📈', label: 'Statistiques' },
       { id: 'qr', ic: '🔗', label: 'QR portail' },
     ];
@@ -341,77 +342,97 @@
   const URGENCY_LABEL = { overdue: '⏰ En retard', soon: '🟠 Bientôt (< 7 j)', upcoming: '🗓️ À venir', nodate: 'Sans échéance', done: 'Faite' };
   const URGENCY_COLOR = { overdue: 'danger', soon: 'warn', upcoming: 'mute', nodate: 'mute', done: 'ok' };
   const URGENCY_ORDER = { overdue: 0, soon: 1, upcoming: 2, nodate: 3, done: 4 };
-  function viewEcheances() {
+  // Ligne d'une action de suivi, réutilisée par Échéances (actives) et Archives (clôturées).
+  function actionRow(a, opts) {
+    opts = opts || {};
     const editable = canEdit();
-    const all = visibleActions().sort((a, b) => (URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency]) || (a.echeance || '9999').localeCompare(b.echeance || '9999'));
-    const pending = all.filter(a => a.urgency !== 'done');
-    const done = all.filter(a => a.urgency === 'done');
-    const overdueCount = all.filter(a => a.urgency === 'overdue').length;
-    const soonCount = all.filter(a => a.urgency === 'soon').length;
-
-    const actionRow = (a) => {
-      const d = a.demande;
-      const node = el('div', { class: 'dem-item', onclick: () => openFiche(d.id) });
-      node.innerHTML = `
-        <span class="ic">📅</span>
-        <div class="body">
-          <div class="res">${escapeHTML(a.libelle || 'Action de suivi')}</div>
-          <div class="meta"><span>${escapeHTML(d.publicRef)}</span>·<span>${escapeHTML(d.resume || '')}</span>
-            ${a.responsable ? '·<span>' + escapeHTML(a.responsable) + '</span>' : ''}
-            ${badge(URGENCY_LABEL[a.urgency], URGENCY_COLOR[a.urgency])}</div>
+    const d = a.demande;
+    const node = el('div', { class: 'dem-item', onclick: () => openFiche(d.id) });
+    node.innerHTML = `
+      <span class="ic">📅</span>
+      <div class="body">
+        <div class="res">${escapeHTML(a.libelle || 'Action de suivi')}</div>
+        <div class="meta"><span>${escapeHTML(d.publicRef)}</span>·<span>${escapeHTML(d.resume || '')}</span>
+          ${a.responsable ? '·<span>' + escapeHTML(a.responsable) + '</span>' : ''}
+          ${badge(URGENCY_LABEL[a.urgency], URGENCY_COLOR[a.urgency])}</div>
+      </div>
+      <div class="right">
+        <div class="small muted">${a.echeance ? fmtDay(a.echeance) : '—'}</div>
+        <div class="row" style="margin-top:4px;gap:6px">
+          ${editable && opts.showReunion ? `<button class="btn btn-ghost btn-sm" data-act="reunion" type="button">→ Réunion</button>` : ''}
+          ${editable ? `<button class="btn btn-ghost btn-sm" data-act="toggle" type="button">${a.etat === 'Fait' ? 'Rouvrir' : 'Marquer fait'}</button>` : ''}
         </div>
-        <div class="right">
-          <div class="small muted">${a.echeance ? fmtDay(a.echeance) : '—'}</div>
-          <div class="row" style="margin-top:4px;gap:6px">
-            ${editable && a.urgency !== 'done' ? `<button class="btn btn-ghost btn-sm" data-act="reunion" type="button">→ Réunion</button>` : ''}
-            ${editable ? `<button class="btn btn-ghost btn-sm" data-act="toggle" type="button">${a.etat === 'Fait' ? 'Rouvrir' : 'Marquer fait'}</button>` : ''}
-          </div>
-        </div>`;
-      const btn = node.querySelector('[data-act="toggle"]');
-      if (btn) btn.onclick = async (ev) => {
-        ev.stopPropagation(); btn.disabled = true;
-        try {
-          await data.updateAction(d.id, a.id, { etat: a.etat === 'Fait' ? 'À faire' : 'Fait' }, session.nom);
-          await reload(); toast(a.etat === 'Fait' ? 'Action rouverte.' : 'Action marquée comme faite.'); render();
-        } catch (e) { toast('Mise à jour impossible.', 'err'); btn.disabled = false; }
-      };
-      const rb = node.querySelector('[data-act="reunion"]');
-      if (rb) rb.onclick = async (ev) => {
-        ev.stopPropagation(); rb.disabled = true;
-        try {
-          await data.addQuestionReunion({ demandeId: d.id, publicRef: d.publicRef, instance: d.instance, format: 'Action de suivi', texte: a.libelle }, session.nom);
-          await reload(); toast('Action ajoutée à la préparation de réunion.'); render();
-        } catch (e) { toast('Ajout impossible.', 'err'); rb.disabled = false; }
-      };
-      return node;
+      </div>`;
+    const btn = node.querySelector('[data-act="toggle"]');
+    if (btn) btn.onclick = async (ev) => {
+      ev.stopPropagation(); btn.disabled = true;
+      try {
+        await data.updateAction(d.id, a.id, { etat: a.etat === 'Fait' ? 'À faire' : 'Fait' }, session.nom);
+        await reload(); toast(a.etat === 'Fait' ? 'Action rouverte.' : 'Action marquée comme faite — archivée.'); render();
+      } catch (e) { toast('Mise à jour impossible.', 'err'); btn.disabled = false; }
     };
+    const rb = node.querySelector('[data-act="reunion"]');
+    if (rb) rb.onclick = async (ev) => {
+      ev.stopPropagation(); rb.disabled = true;
+      try {
+        await data.addQuestionReunion({ demandeId: d.id, publicRef: d.publicRef, instance: d.instance, format: 'Action de suivi', texte: a.libelle }, session.nom);
+        await reload(); toast('Action ajoutée à la préparation de réunion.'); render();
+      } catch (e) { toast('Ajout impossible.', 'err'); rb.disabled = false; }
+    };
+    return node;
+  }
+
+  function viewEcheances() {
+    // Uniquement les actions actives : elles restent visibles ici tant qu'elles ne sont
+    // pas marquées faites — à ce moment-là elles basculent dans Archives, pas juste masquées.
+    const pending = visibleActions().filter(a => a.urgency !== 'done')
+      .sort((a, b) => (URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency]) || (a.echeance || '9999').localeCompare(b.echeance || '9999'));
+    const overdueCount = pending.filter(a => a.urgency === 'overdue').length;
+    const soonCount = pending.filter(a => a.urgency === 'soon').length;
+    const doneCount = visibleActions().filter(a => a.urgency === 'done').length;
 
     const box = el('div');
     box.innerHTML = `
       <h1>Échéances</h1>
-      <p class="page-sub">Toutes les actions de suivi (§4.3) de votre périmètre, triées par urgence.</p>
+      <p class="page-sub">Actions de suivi (§4.3) actives de votre périmètre, triées par urgence. Une fois faites, elles passent dans Archives.</p>
       <div class="kpi-grid">
-        <div class="kpi alert"><div class="v">${overdueCount}</div><div class="l">En retard</div></div>
-        <div class="kpi warn"><div class="v">${soonCount}</div><div class="l">Bientôt (&lt; 7 j)</div></div>
-        <div class="kpi ok"><div class="v">${done.length}</div><div class="l">Faites</div></div>
+        ${kpi(overdueCount, 'En retard', 'alert', 'echeances', {})}
+        ${kpi(soonCount, 'Bientôt (< 7 j)', 'warn', 'echeances', {})}
+        ${kpi(doneCount, 'Faites (archivées)', 'ok', 'archives', {})}
       </div>
-      <div class="card card-pad"><h3>À traiter</h3><div id="pending"></div></div>
-      <div class="card card-pad" style="margin-top:12px">
-        <div class="row-between"><h3 style="margin:0">Faites <span class="muted small">(${done.length})</span></h3>
-          ${done.length ? '<button class="btn btn-ghost btn-sm" id="toggle-done" type="button">Afficher</button>' : ''}</div>
-        <div id="done-list" style="display:none;margin-top:10px"></div>
-      </div>`;
+      <div class="card card-pad"><h3>À traiter</h3><div id="pending"></div></div>`;
     const pendingHost = box.querySelector('#pending');
-    if (pending.length) pending.forEach(a => pendingHost.appendChild(actionRow(a)));
+    if (pending.length) pending.forEach(a => pendingHost.appendChild(actionRow(a, { showReunion: true })));
     else pendingHost.innerHTML = '<p class="muted small">Aucune action de suivi en attente dans votre périmètre.</p>';
-    const doneHost = box.querySelector('#done-list');
-    done.forEach(a => doneHost.appendChild(actionRow(a)));
-    const toggleBtn = box.querySelector('#toggle-done');
-    if (toggleBtn) toggleBtn.onclick = () => {
-      const showing = doneHost.style.display !== 'none';
-      doneHost.style.display = showing ? 'none' : '';
-      toggleBtn.textContent = showing ? 'Afficher' : 'Masquer';
-    };
+    renderShell(box); wireKPIs();
+  }
+
+  /* ======================= ARCHIVES ======================= */
+  function viewArchives() {
+    const doneActions = visibleActions().filter(a => a.urgency === 'done')
+      .sort((a, b) => (b.echeance || '').localeCompare(a.echeance || ''));
+    const closedStatuts = ['Clôturée', 'Archivée', 'Résolue'];
+    const closedDemandes = visibleDemandes().filter(d => closedStatuts.includes(d.statut))
+      .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+
+    const box = el('div');
+    box.innerHTML = `
+      <h1>Archives</h1>
+      <p class="page-sub">Actions de suivi terminées et dossiers clôturés — l'historique, à l'écart des vues actives.</p>
+      <div class="card card-pad">
+        <h3>Actions de suivi faites ${badge(String(doneActions.length), 'ok')}</h3>
+        <div id="done-actions"></div>
+      </div>
+      <div class="card card-pad" style="margin-top:12px">
+        <h3>Demandes clôturées ${badge(String(closedDemandes.length), 'mute')}</h3>
+        <div id="closed-demandes"></div>
+      </div>`;
+    const doneHost = box.querySelector('#done-actions');
+    if (doneActions.length) doneActions.forEach(a => doneHost.appendChild(actionRow(a, { showReunion: false })));
+    else doneHost.innerHTML = '<p class="muted small">Aucune action de suivi terminée pour l\'instant.</p>';
+    const closedHost = box.querySelector('#closed-demandes');
+    if (closedDemandes.length) closedDemandes.forEach(d => closedHost.appendChild(demItem(d)));
+    else closedHost.innerHTML = '<p class="muted small">Aucun dossier clôturé pour l\'instant.</p>';
     renderShell(box);
   }
 
@@ -1013,6 +1034,7 @@
       case 'echeances': viewEcheances(); break;
       case 'fiche': viewFiche(); break;
       case 'reunions': viewReunions(); break;
+      case 'archives': viewArchives(); break;
       case 'stats': viewStats(); break;
       case 'qr': viewQR(); break;
       case 'admin': viewAdmin(); break;
