@@ -12,6 +12,13 @@
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+  // Titre court dérivé UNIQUEMENT de la formulation choisie (q.texte) — jamais du résumé
+  // ou du texte brut de la demande, pour ne jamais laisser réapparaître la question de base.
+  function titleFor(q) {
+    const t = q.texte || q.format || '';
+    return t.length > 100 ? t.slice(0, 100).replace(/\s+\S*$/, '') + '…' : t;
+  }
+
   // Construit le corps HTML d'un export à partir d'une liste d'items { demande, question }.
   // Utilise TOUJOURS le texte de la formulation choisie (question.texte) — jamais le texte
   // brut de la demande — pour que le fichier reflète exactement ce que l'élu a sélectionné.
@@ -28,7 +35,7 @@
       }
       return `
       <section class="demande">
-        <h2>${i + 1}. ${esc(d.resume || q.format)}</h2>
+        <h2>${i + 1}. ${esc(titleFor(q))}</h2>
         <p class="meta">Réf. ${esc(d.publicRef)} · ${esc(q.instance)} ·
            Catégorie&nbsp;: ${esc(d.categorie || '—')} · Priorité&nbsp;: ${esc(d.priorite)} ·
            Formulation retenue&nbsp;: ${esc(q.format)} ·
@@ -88,7 +95,7 @@
   async function toClipboard(items, opts) {
     const anonymise = !opts || opts.anonymise !== false;
     const txt = items.map(({ demande: d, question: q }, i) => {
-      return `${i + 1}. [${d.publicRef}] ${d.resume || q.format}\n`
+      return `${i + 1}. [${d.publicRef}] ${titleFor(q)}\n`
            + `   Formulation retenue : ${q.format} · ${q.instance}\n`
            + `   ${anonymise ? '(version anonymisée)' : ''}\n`
            + `   ${q.texte}`;

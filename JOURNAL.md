@@ -1,5 +1,19 @@
 # Journal — Parole Salariés By Cedmad
 
+## Export réunion : le titre affichait encore la question de base — 2026-07-19
+**Statut : en cours**
+
+Retour utilisateur (capture du .doc généré) : le corps du texte affichait bien
+la formulation choisie (ex. Version CSSCT), mais le TITRE de chaque section
+(`<h2>`) affichait toujours la question brute d'origine du salarié. Cause :
+`js/export.js` utilisait `d.resume || q.format` pour le titre — `resume`
+correspond souvent au texte brut, jamais à la formulation retenue. Corrigé :
+nouvelle fonction `titleFor(q)` qui dérive le titre UNIQUEMENT de la
+formulation choisie (`q.texte`, tronqué à 100 caractères si besoin), utilisée
+à la fois dans le titre du Word/PDF (`buildHTML`) et la première ligne de la
+copie email (`toClipboard`). La question de base n'apparaît plus nulle part
+dans les exports une fois une formulation choisie.
+
 ## Réunions : retrait des demandes brutes automatiques — 2026-07-19
 **Statut : en cours**
 
