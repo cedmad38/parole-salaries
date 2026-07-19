@@ -1,5 +1,44 @@
 # Journal — Parole Salariés By Cedmad
 
+## Choix de formulation pour les réunions + corrections — 2026-07-19
+**Statut : en cours**
+
+Quatre points corrigés suite à un retour utilisateur :
+
+1. **Texte original du salarié envoyable en réunion.** Jusqu'ici seules les
+   7 formulations IA avaient un bouton « → Réunion » ; le texte brut n'en
+   avait pas. Ajouté, avec le même mécanisme de choix que les formulations.
+
+2. **« Réponse insuffisante » compte maintenant dans « En attente de
+   réponse »** sur le tableau de bord (auparavant seul « Transmise à la
+   direction » comptait — un dossier avec une réponse jugée insuffisante
+   disparaissait à tort des compteurs).
+
+3. **Une seule formulation choisie par demande pour la réunion.** Avant,
+   cliquer « → Réunion » sur plusieurs formulations de la même demande les
+   empilait toutes. Maintenant, choisir une formulation (ou le texte
+   original) **remplace** le choix précédent pour cette demande — jamais
+   plus d'une à la fois. Un bouton « Retirer de la réunion » permet
+   d'annuler le choix. Nécessite une nouvelle policy RLS (`qr_delete`,
+   absente jusqu'ici — sans elle, aucune suppression n'était possible côté
+   base).
+
+4. **Bug corrigé : le fichier exporté contenait le texte original même
+   quand une formulation IA précise avait été choisie.** Cause : l'export
+   reconstruisait son contenu à partir de la demande elle-même
+   (`texteBrut`), pas de la formulation réellement sélectionnée
+   (`questions_reunion.texte`) — la sélection de l'élu était silencieusement
+   ignorée. `js/export.js` prend désormais directement le texte choisi.
+   Effet de bord positif : l'ancien code dédoublonnait aussi par demande,
+   perdant toute deuxième ligne (ex. une formulation + une action de suivi
+   sur la même demande) ; ce n'est plus le cas, chaque élément choisi
+   apparaît sur sa propre ligne dans l'export.
+
+Vérifié : syntaxe validée (`node --check`) sur tous les fichiers touchés.
+Bug additionnel repéré et corrigé au passage : `badge(..., 'ok')` sur la
+carte Archives ne correspondait à aucune classe CSS (`.badge-success`
+existe, `.badge-ok` non) — rendu sans couleur, corrigé.
+
 ## Onglet Archives + Échéances allégée — 2026-07-16
 **Statut : en cours**
 

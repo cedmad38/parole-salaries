@@ -12,13 +12,14 @@
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // Construit le corps HTML d'un export à partir d'une liste de demandes
-  function buildHTML(demandes, opts) {
+  // Construit le corps HTML d'un export à partir d'une liste d'items { demande, question }.
+  // Utilise TOUJOURS le texte de la formulation choisie (question.texte) — jamais le texte
+  // brut de la demande — pour que le fichier reflète exactement ce que l'élu a sélectionné.
+  function buildHTML(items, opts) {
     opts = opts || {};
     const anonymise = opts.anonymise !== false; // par défaut : version à communiquer = anonymisée
     const store = S();
-    const rows = demandes.map((d, i) => {
-      const type = store.TYPES.find(t => t.id === d.typeId);
+    const rows = items.map(({ demande: d, question: q }, i) => {
       const conf = store.CONFIDENTIALITE[d.confidentialite];
       let identite = '';
       if (!anonymise) {
@@ -27,15 +28,14 @@
       }
       return `
       <section class="demande">
-        <h2>${i + 1}. ${esc(d.resume || (type ? type.label : 'Demande'))}</h2>
-        <p class="meta">Réf. ${esc(d.publicRef)} · ${esc(type ? type.label : '')} · ${esc(d.instance)} ·
+        <h2>${i + 1}. ${esc(d.resume || q.format)}</h2>
+        <p class="meta">Réf. ${esc(d.publicRef)} · ${esc(q.instance)} ·
            Catégorie&nbsp;: ${esc(d.categorie || '—')} · Priorité&nbsp;: ${esc(d.priorite)} ·
+           Formulation retenue&nbsp;: ${esc(q.format)} ·
            ${esc(anonymise ? 'Version anonymisée' : conf.label)}</p>
         ${d.etablissement ? `<p><strong>Établissement&nbsp;:</strong> ${esc(d.etablissement)}${d.service ? ' — ' + esc(d.service) : ''}</p>` : ''}
         ${identite}
-        <p><strong>Résumé&nbsp;:</strong> ${esc(d.resume || '—')}</p>
-        <p><strong>Texte original du salarié&nbsp;:</strong></p>
-        <blockquote>${esc(d.texteBrut)}</blockquote>
+        <blockquote>${esc(q.texte)}</blockquote>
         ${d.reponsePubliee ? `<p><strong>Réponse publiée&nbsp;:</strong> ${esc(d.reponsePubliee)}</p>` : ''}
       </section>`;
     }).join('\n');
@@ -68,14 +68,14 @@
   }
 
   // Export Word (.doc) — HTML avec MIME Word, ouvre directement dans Word/Pages
-  function toWord(demandes, opts) {
-    const html = buildHTML(demandes, opts);
+  function toWord(items, opts) {
+    const html = buildHTML(items, opts);
     download((opts && opts.filename || 'questions') + '.doc', html, 'application/msword');
   }
 
   // Export PDF — ouvre une fenêtre d'impression (« Enregistrer au format PDF »)
-  function toPDF(demandes, opts) {
-    const html = buildHTML(demandes, opts);
+  function toPDF(items, opts) {
+    const html = buildHTML(items, opts);
     const w = window.open('', '_blank');
     if (!w) { alert("Autorisez les fenêtres pop-up pour générer le PDF."); return; }
     w.document.write(html);
@@ -84,16 +84,14 @@
     setTimeout(() => w.print(), 350);
   }
 
-  // Copie email — texte simple
-  async function toClipboard(demandes, opts) {
-    const store = S();
+  // Copie email — texte simple. Items : [{ demande, question }] — toujours le texte choisi.
+  async function toClipboard(items, opts) {
     const anonymise = !opts || opts.anonymise !== false;
-    const txt = demandes.map((d, i) => {
-      const type = store.TYPES.find(t => t.id === d.typeId);
-      return `${i + 1}. [${d.publicRef}] ${d.resume || (type ? type.label : '')}\n`
-           + `   Catégorie : ${d.categorie || '—'} · ${d.instance}\n`
+    const txt = items.map(({ demande: d, question: q }, i) => {
+      return `${i + 1}. [${d.publicRef}] ${d.resume || q.format}\n`
+           + `   Formulation retenue : ${q.format} · ${q.instance}\n`
            + `   ${anonymise ? '(version anonymisée)' : ''}\n`
-           + `   Texte original : ${d.texteBrut}`;
+           + `   ${q.texte}`;
     }).join('\n\n');
     const header = `Parole Salariés By Cedmad — ${opts && opts.titre || 'Questions'}\n\n`;
     try { await navigator.clipboard.writeText(header + txt); return true; }

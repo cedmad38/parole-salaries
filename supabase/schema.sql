@@ -221,6 +221,9 @@ create policy qr_read on questions_reunion for select to authenticated
   using (demande_id is null or exists (select 1 from demandes d where d.id = questions_reunion.demande_id and public.can_see_etab(d.etablissement_id)));
 create policy qr_write on questions_reunion for insert to authenticated
   with check (public.is_admin() or public.is_referent() or public.elu_role() = 'elu_gestionnaire');
+create policy qr_delete on questions_reunion for delete to authenticated
+  using ((public.is_admin() or public.is_referent() or public.elu_role() = 'elu_gestionnaire')
+         and (demande_id is null or exists (select 1 from demandes d where d.id = questions_reunion.demande_id and public.can_see_etab(d.etablissement_id))));
 
 -- Réponses direction
 create policy rep_read on reponses_direction for select to authenticated

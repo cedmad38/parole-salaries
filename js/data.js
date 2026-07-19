@@ -121,6 +121,9 @@
     delete snap._acts[demandeId];
   }
   async function addQuestionReunion(q, actor)            { return online() ? api().addQuestionReunion(q, actor) : store().addQuestionReunion(q, actor); }
+  async function replaceQuestionReunion(q, actor)         { return online() ? api().replaceQuestionReunion(q, actor) : store().replaceQuestionReunion(q, actor); }
+  async function removeFromReunion(demandeId, actor)      { if (online()) await api().removeFromReunion(demandeId); else store().removeFromReunion(demandeId, actor); }
+  async function deleteQuestionReunion(id, actor)         { if (online()) await api().deleteQuestionReunion(id); else store().deleteQuestionReunion(id, actor); }
   async function mergeDemandes(m, ids, actor)            { return online() ? api().mergeDemandes(m, ids, actor) : store().mergeDemandes(m, ids, actor); }
   async function deleteDemande(id, actor)                { const r = online() ? await api().deleteDemande(id) : store().deleteDemande(id, actor); delete snap._msgs[id]; delete snap._acts[id]; delete snap._reps[id]; return r; }
   // Relance manuelle de la classification IA (Gemini) — mode local : indisponible (retourne un message clair)
@@ -159,7 +162,7 @@
     signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
     loadElus, demandes, demandeById, etablissements, organisation, questionsReunion,
     messagesFor, actionsFor, allActions, reponsesFor, revealIdentity,
-    updateDemande, addEluMessage, addReponseDirection, addAction, updateAction, addQuestionReunion, mergeDemandes, deleteDemande, classifyDemande,
+    updateDemande, addEluMessage, addReponseDirection, addAction, updateAction, addQuestionReunion, replaceQuestionReunion, removeFromReunion, deleteQuestionReunion, mergeDemandes, deleteDemande, classifyDemande,
     stats, exportAll,
   };
 })(window);

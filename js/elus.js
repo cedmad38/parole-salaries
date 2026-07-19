@@ -218,7 +218,8 @@
       urgentes: ds.filter(d => d.priorite === 'Urgente' && !['Résolue', 'Clôturée', 'Archivée'].includes(d.statut)).length,
       incompletes: ds.filter(d => d.statut === 'À compléter').length,
       pretes: ds.filter(d => d.statut === 'Prête pour réunion').length,
-      attente: ds.filter(d => d.statut === 'Transmise à la direction').length,
+      // Une réponse insuffisante remet le dossier « en attente » d'une vraie réponse.
+      attente: ds.filter(d => ['Transmise à la direction', 'Réponse insuffisante'].includes(d.statut)).length,
       apublier: ds.filter(d => d.statut === 'Réponse reçue' && !d.reponsePubliee).length,
     };
   }
@@ -313,7 +314,7 @@
         ${kpi(c.urgentes, 'Urgentes', 'alert', 'demandes', { statut: '' })}
         ${kpi(c.incompletes, 'À compléter', 'warn', 'demandes', { statut: 'À compléter' })}
         ${kpi(c.pretes, 'Prêtes pour réunion', 'ok', 'demandes', { statut: 'Prête pour réunion' })}
-        ${kpi(c.attente, 'En attente de réponse', '', 'demandes', { statut: 'Transmise à la direction' })}
+        ${kpi(c.attente, 'En attente de réponse', '', 'demandes', { statut: ['Transmise à la direction', 'Réponse insuffisante'] })}
         ${kpi(c.apublier, 'Réponses à publier', 'ok', 'demandes', { statut: 'Réponse reçue' })}
       </div>
       <div class="card card-pad" style="margin-bottom:14px">
@@ -420,7 +421,7 @@
       <h1>Archives</h1>
       <p class="page-sub">Actions de suivi terminées et dossiers clôturés — l'historique, à l'écart des vues actives.</p>
       <div class="card card-pad">
-        <h3>Actions de suivi faites ${badge(String(doneActions.length), 'ok')}</h3>
+        <h3>Actions de suivi faites ${badge(String(doneActions.length), 'success')}</h3>
         <div id="done-actions"></div>
       </div>
       <div class="card card-pad" style="margin-top:12px">
@@ -449,23 +450,24 @@
         <span class="grow"></span><span class="muted small" id="count"></span>
       </div>
       <div id="list"></div>`;
-    const apply = () => {
-      state.filters.q = box.querySelector('#f-q').value;
-      state.filters.statut = box.querySelector('#f-statut').value;
-      state.filters.cat = box.querySelector('#f-cat').value;
-      const list = box.querySelector('#list'); list.innerHTML = '';
+    // Rendu de la liste à partir de state.filters (ne touche jamais au DOM des filtres —
+    // seuls les listeners ci-dessous mettent à jour state.filters). Nécessaire pour que
+    // les filtres multi-statuts venus d'un KPI (ex. tableau de bord) ne soient pas
+    // écrasés par la valeur du menu déroulant au premier rendu.
+    const list = () => {
+      const listHost = box.querySelector('#list'); listHost.innerHTML = '';
       let ds = visibleDemandes(); const f = state.filters;
-      if (f.statut) ds = ds.filter(d => d.statut === f.statut);
+      if (f.statut) { const wanted = Array.isArray(f.statut) ? f.statut : [f.statut]; ds = ds.filter(d => wanted.includes(d.statut)); }
       if (f.cat) ds = ds.filter(d => d.categorie === f.cat);
       if (f.q) { const q = f.q.toLowerCase(); ds = ds.filter(d => (d.texteBrut + ' ' + d.resume + ' ' + d.publicRef).toLowerCase().includes(q)); }
       box.querySelector('#count').textContent = ds.length + ' demande' + (ds.length > 1 ? 's' : '');
-      if (!ds.length) { list.innerHTML = '<p class="muted">Aucune demande ne correspond.</p>'; return; }
-      ds.forEach(d => list.appendChild(demItem(d)));
+      if (!ds.length) { listHost.innerHTML = '<p class="muted">Aucune demande ne correspond.</p>'; return; }
+      ds.forEach(d => listHost.appendChild(demItem(d)));
     };
-    box.querySelector('#f-q').addEventListener('input', apply);
-    box.querySelector('#f-statut').addEventListener('change', apply);
-    box.querySelector('#f-cat').addEventListener('change', apply);
-    renderShell(box); apply();
+    box.querySelector('#f-q').addEventListener('input', () => { state.filters.q = box.querySelector('#f-q').value; list(); });
+    box.querySelector('#f-statut').addEventListener('change', () => { state.filters.statut = box.querySelector('#f-statut').value; list(); });
+    box.querySelector('#f-cat').addEventListener('change', () => { state.filters.cat = box.querySelector('#f-cat').value; list(); });
+    renderShell(box); list();
   }
   function demItem(d) {
     const type = store.TYPES.find(t => t.id === d.typeId) || {};
@@ -492,6 +494,7 @@
     }
     state.currentId = id; state.view = 'fiche'; render();
   }
+  const RAW_TEXT_FORMAT = 'Texte original';
   async function viewFiche() {
     const d = data.demandeById(state.currentId);
     if (!d) { state.view = 'demandes'; render(); return; }
@@ -500,6 +503,9 @@
     let idAccess; try { idAccess = await data.revealIdentity(d, session.role); } catch (e) { idAccess = { visible: false, reason: 'Accès identité indisponible.' }; }
     const editable = canEdit();
     const legalRef = PS.legal.forCategorie(d.categorie);
+    // Formulation actuellement choisie pour la réunion (hors actions de suivi) — au plus une.
+    const currentQ = data.questionsReunion().find(q => q.demandeId === d.id && q.format !== 'Action de suivi');
+    const isRawChosen = !!(currentQ && currentQ.format === RAW_TEXT_FORMAT);
 
     const box = el('div');
     box.innerHTML = `
@@ -513,8 +519,13 @@
       <div class="fiche-grid">
         <div class="fiche-col">
           <div class="card card-pad">
-            <h3>Texte original du salarié <span class="badge badge-mute">conservé tel quel</span></h3>
+            <h3>Texte original du salarié <span class="badge badge-mute">conservé tel quel</span>${isRawChosen ? ' ' + badge('✓ Choisi pour la réunion', 'success') : ''}</h3>
             <div class="original-quote">${escapeHTML(d.texteBrut)}</div>
+            ${editable ? `<div class="acts" style="margin-top:8px">
+              ${isRawChosen
+                ? '<button class="btn btn-sm btn-ghost" data-act="retirer-brut" type="button">Retirer de la réunion</button>'
+                : '<button class="btn btn-sm btn-primary" data-act="reunion-brut" type="button">→ Réunion (tel quel)</button>'}
+            </div>` : ''}
             <h3 style="margin-top:14px">Résumé <span class="badge badge-primary">généré</span></h3>
             <p>${escapeHTML(d.resume || '—')}</p>
             ${Object.keys(d.reponses || {}).length ? '<h3>Précisions recueillies</h3>' + Object.entries(d.reponses).filter(([, v]) => v).map(([k, v]) => `<p class="small"><strong>${escapeHTML((assistant.THEMES[k] || {}).theme || k)} :</strong> ${escapeHTML(v)}</p>`).join('') : ''}
@@ -567,20 +578,39 @@
       </div>`;
     box.querySelector('#back').onclick = () => { state.view = 'demandes'; render(); };
 
+    const rbBrut = box.querySelector('[data-act="reunion-brut"]');
+    if (rbBrut) rbBrut.onclick = async () => {
+      await data.replaceQuestionReunion({ demandeId: d.id, publicRef: d.publicRef, instance: d.instance, format: RAW_TEXT_FORMAT, texte: d.texteBrut }, session.nom);
+      await reload(); toast('Texte original choisi pour la réunion.'); render();
+    };
+    const retBrut = box.querySelector('[data-act="retirer-brut"]');
+    if (retBrut) retBrut.onclick = async () => {
+      await data.removeFromReunion(d.id, session.nom);
+      await reload(); toast('Retiré de la préparation de réunion.'); render();
+    };
+
     const fhost = box.querySelector('#formuls');
     const baseForms = assistant.formulations(d);
     Object.keys(baseForms).forEach(k => {
       const aiTexte = d.iaFormulations && d.iaFormulations[k];
       const f = { titre: baseForms[k].titre, finalite: baseForms[k].finalite, texte: aiTexte || baseForms[k].texte, isAI: !!aiTexte };
-      const card = el('div', { class: 'formul' });
-      card.innerHTML = `<h4>${escapeHTML(f.titre)}${f.isAI ? ' ' + badge('IA', 'primary') : ''}</h4><div class="fin">${escapeHTML(f.finalite)}</div><div class="txt">${escapeHTML(f.texte)}</div>
+      const isChosen = !!(currentQ && currentQ.format === f.titre);
+      const card = el('div', { class: 'formul' + (isChosen ? ' formul-chosen' : '') });
+      card.innerHTML = `<h4>${escapeHTML(f.titre)}${f.isAI ? ' ' + badge('IA', 'primary') : ''}${isChosen ? ' ' + badge('✓ Choisie pour la réunion', 'success') : ''}</h4><div class="fin">${escapeHTML(f.finalite)}</div><div class="txt">${escapeHTML(f.texte)}</div>
         <div class="acts"><button class="btn btn-sm btn-ghost" data-act="copy" type="button">Copier</button>
-          ${editable ? '<button class="btn btn-sm btn-primary" data-act="reunion" type="button">→ Réunion</button>' : ''}</div>`;
+          ${editable ? (isChosen
+            ? '<button class="btn btn-sm btn-ghost" data-act="retirer" type="button">Retirer de la réunion</button>'
+            : '<button class="btn btn-sm btn-primary" data-act="reunion" type="button">→ Réunion</button>') : ''}</div>`;
       card.querySelector('[data-act="copy"]').onclick = async () => { try { await navigator.clipboard.writeText(f.texte); toast('Formulation copiée.'); } catch (e) { toast('Copie impossible.', 'err'); } };
       const rb = card.querySelector('[data-act="reunion"]');
       if (rb) rb.onclick = async () => {
-        await data.addQuestionReunion({ demandeId: d.id, publicRef: d.publicRef, instance: d.instance, format: f.titre, texte: f.texte, statut: 'À inscrire' }, session.nom);
-        await reload(); toast('Question ajoutée à la préparation de réunion.');
+        await data.replaceQuestionReunion({ demandeId: d.id, publicRef: d.publicRef, instance: d.instance, format: f.titre, texte: f.texte }, session.nom);
+        await reload(); toast('Formulation choisie pour la réunion.'); render();
+      };
+      const rt = card.querySelector('[data-act="retirer"]');
+      if (rt) rt.onclick = async () => {
+        await data.removeFromReunion(d.id, session.nom);
+        await reload(); toast('Retirée de la préparation de réunion.'); render();
       };
       fhost.appendChild(card);
     });
@@ -771,12 +801,24 @@
     if (!nouvelles.length) newHost.innerHTML = '<p class="muted small">Aucune nouvelle demande en attente.</p>';
     nouvelles.forEach(d => newHost.appendChild(demItem(d)));
     const host = box.querySelector('#q-list');
-    if (!qs.length) host.innerHTML = '<p class="muted">Aucune question préparée. Depuis une fiche, cliquez « → Réunion » sur une formulation.</p>';
-    qs.forEach(q => host.appendChild(el('div', { class: 'formul', html: `<h4>${escapeHTML(q.format)} · ${escapeHTML(q.instance)} <span class="badge badge-mute">${escapeHTML(q.publicRef || '')}</span></h4><div class="txt">${escapeHTML(q.texte)}</div>` })));
-    const demandesForExport = () => { const ids = [...new Set(qs.map(q => q.demandeId))]; return data.demandes().filter(d => ids.includes(d.id)); };
-    box.querySelector('#ex-word').onclick = () => exporter.toWord(demandesForExport(), { anonymise: !box.querySelector('#ex-full').checked, titre: 'Questions de réunion', filename: 'questions-reunion' });
-    box.querySelector('#ex-pdf').onclick = () => exporter.toPDF(demandesForExport(), { anonymise: !box.querySelector('#ex-full').checked, titre: 'Questions de réunion' });
-    box.querySelector('#ex-copy').onclick = async () => { const ok = await exporter.toClipboard(demandesForExport(), { anonymise: !box.querySelector('#ex-full').checked, titre: 'Questions de réunion' }); toast(ok ? 'Copié dans le presse-papier.' : 'Copie impossible.', ok ? 'ok' : 'err'); };
+    if (!qs.length) host.innerHTML = '<p class="muted">Aucune question préparée. Depuis une fiche, cliquez « → Réunion » sur une formulation (ou le texte original).</p>';
+    qs.forEach(q => {
+      const card = el('div', { class: 'formul' });
+      card.innerHTML = `<h4>${escapeHTML(q.format)} · ${escapeHTML(q.instance)} <span class="badge badge-mute">${escapeHTML(q.publicRef || '')}</span></h4><div class="txt">${escapeHTML(q.texte)}</div>
+        <div class="acts"><button class="btn btn-sm btn-ghost" data-act="remove" type="button">Retirer</button></div>`;
+      card.querySelector('[data-act="remove"]').onclick = async () => {
+        await data.deleteQuestionReunion(q.id, session.nom);
+        await reload(); toast('Retirée de la préparation.'); render();
+      };
+      host.appendChild(card);
+    });
+    // L'export utilise TOUJOURS le texte de la formulation choisie (q.texte), jamais le
+    // texte brut de la demande — sinon on retrouve le texte original même quand une
+    // formulation IA précise avait été choisie (bug corrigé).
+    const itemsForExport = () => qs.map(q => ({ question: q, demande: data.demandeById(q.demandeId) })).filter(x => x.demande);
+    box.querySelector('#ex-word').onclick = () => exporter.toWord(itemsForExport(), { anonymise: !box.querySelector('#ex-full').checked, titre: 'Questions de réunion', filename: 'questions-reunion' });
+    box.querySelector('#ex-pdf').onclick = () => exporter.toPDF(itemsForExport(), { anonymise: !box.querySelector('#ex-full').checked, titre: 'Questions de réunion' });
+    box.querySelector('#ex-copy').onclick = async () => { const ok = await exporter.toClipboard(itemsForExport(), { anonymise: !box.querySelector('#ex-full').checked, titre: 'Questions de réunion' }); toast(ok ? 'Copié dans le presse-papier.' : 'Copie impossible.', ok ? 'ok' : 'err'); };
     renderShell(box);
   }
 

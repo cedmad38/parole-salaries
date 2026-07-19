@@ -320,6 +320,24 @@
     save(db);
     return item;
   }
+  // Une seule formulation « choisie » à la fois par demande — un nouveau choix remplace le
+  // précédent. Les actions de suivi (format « Action de suivi ») ne sont jamais concernées.
+  function replaceQuestionReunion(q, actor) {
+    const db = get();
+    db.questions = db.questions.filter(x => !(x.demandeId === q.demandeId && x.format !== 'Action de suivi'));
+    save(db);
+    return addQuestionReunion(q, actor);
+  }
+  function removeFromReunion(demandeId) {
+    const db = get();
+    db.questions = db.questions.filter(x => !(x.demandeId === demandeId && x.format !== 'Action de suivi'));
+    save(db);
+  }
+  function deleteQuestionReunion(id) {
+    const db = get();
+    db.questions = db.questions.filter(x => x.id !== id);
+    save(db);
+  }
   function questionsReunion() { return get().questions; }
 
   /* ---------------- Statistiques anonymisées (§6.2) ------------- */
@@ -439,7 +457,7 @@
     // élus
     login, listElus, updateElu, updateDemande, addEluMessage, messagesFor, piecesFor, identityFor,
     mergeDemandes, deleteDemande, addReponseDirection, addAction, updateAction, actionsFor, reponsesFor,
-    addQuestionReunion, questionsReunion, stats,
+    addQuestionReunion, replaceQuestionReunion, removeFromReunion, deleteQuestionReunion, questionsReunion, stats,
     // helpers
     uid, now,
   };

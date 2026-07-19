@@ -222,6 +222,18 @@
     }).select().single();
     return data;
   }
+  // Une seule formulation « choisie » à la fois par demande — un nouveau choix remplace le
+  // précédent. Les actions de suivi (format « Action de suivi ») ne sont jamais concernées.
+  async function replaceQuestionReunion(q, actor) {
+    await db().from('questions_reunion').delete().eq('demande_id', q.demandeId).neq('format', 'Action de suivi');
+    return addQuestionReunion(q, actor);
+  }
+  async function removeFromReunion(demandeId) {
+    await db().from('questions_reunion').delete().eq('demande_id', demandeId).neq('format', 'Action de suivi');
+  }
+  async function deleteQuestionReunion(id) {
+    await db().from('questions_reunion').delete().eq('id', id);
+  }
   async function questionsReunion() {
     const { data } = await db().from('questions_reunion').select('*').order('created_at');
     return (data || []).map(q => ({ id: q.id, demandeId: q.demande_id, publicRef: q.public_ref, instance: q.instance, format: q.format, texte: q.texte }));
@@ -252,6 +264,6 @@
     getDemandes, getDemande, updateDemande, addEluMessage, messagesFor, piecesFor,
     revealIdentity, mergeDemandes, deleteDemande, addReponseDirection, addAction, updateAction, actionsFor, reponsesFor,
     messagesAll, actionsAll, reponsesAll,
-    addQuestionReunion, questionsReunion, stats, etablissements, organisation,
+    addQuestionReunion, replaceQuestionReunion, removeFromReunion, deleteQuestionReunion, questionsReunion, stats, etablissements, organisation,
   };
 })(window);
