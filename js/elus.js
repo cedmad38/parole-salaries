@@ -775,20 +775,10 @@
   /* ======================= RÉUNIONS (§7) ======================= */
   function viewReunions() {
     const qs = data.questionsReunion();
-    // Les nouvelles demandes arrivent automatiquement ici — rien à cocher, elles
-    // sortent seules de la liste dès que leur statut change (traitées ailleurs).
-    const nouvelles = visibleDemandes().filter(d => d.statut === 'Nouvelle')
-      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     const box = el('div');
     box.innerHTML = `
       <h1>Préparation des réunions</h1>
-      <p class="page-sub">Les nouvelles demandes arrivent automatiquement ci-dessous. Les actions de suivi doivent être ajoutées manuellement depuis « Échéances ».</p>
-      <div class="card card-pad" style="margin-bottom:14px">
-        <h3>Nouvelles demandes à présenter ${nouvelles.length ? badge(String(nouvelles.length), 'primary') : ''}</h3>
-        <div id="new-list"></div>
-      </div>
-      <h3 style="margin-bottom:8px">Questions préparées</h3>
-      <p class="hint" style="margin-top:0">Ajoutées depuis une fiche (« → Réunion ») ou depuis une action de suivi. Exportez la version anonymisée à communiquer, ou la version complète réservée aux élus.</p>
+      <p class="page-sub">Seules les questions explicitement choisies apparaissent ici — jamais les demandes brutes. Depuis une fiche, choisissez une formulation (ou le texte original) via « → Réunion » ; depuis Échéances, une action de suivi via le même bouton.</p>
       <div class="row" style="margin-bottom:14px">
         <button class="btn btn-primary btn-sm" id="ex-word" type="button">Export Word</button>
         <button class="btn btn-ghost btn-sm" id="ex-pdf" type="button">Export PDF</button>
@@ -797,9 +787,6 @@
         <label class="small" style="display:flex;gap:6px;align-items:center;font-weight:400"><input type="checkbox" id="ex-full" style="width:auto"> Version complète (élus)</label>
       </div>
       <div id="q-list"></div>`;
-    const newHost = box.querySelector('#new-list');
-    if (!nouvelles.length) newHost.innerHTML = '<p class="muted small">Aucune nouvelle demande en attente.</p>';
-    nouvelles.forEach(d => newHost.appendChild(demItem(d)));
     const host = box.querySelector('#q-list');
     if (!qs.length) host.innerHTML = '<p class="muted">Aucune question préparée. Depuis une fiche, cliquez « → Réunion » sur une formulation (ou le texte original).</p>';
     qs.forEach(q => {

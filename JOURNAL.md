@@ -1,5 +1,14 @@
 # Journal — Parole Salariés By Cedmad
 
+## Réunions : retrait des demandes brutes automatiques — 2026-07-19
+**Statut : en cours**
+
+Retour utilisateur sur la section « Nouvelles demandes à présenter » ajoutée
+précédemment (statut « Nouvelle » automatique) : non souhaitée. Retirée
+entièrement — l'onglet Réunions ne contient plus désormais QUE les questions
+explicitement choisies par un élu (formulation, texte original, ou action de
+suivi via « → Réunion »), plus jamais de demande brute affichée d'office.
+
 ## Choix de formulation pour les réunions + corrections — 2026-07-19
 **Statut : en cours**
 
