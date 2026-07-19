@@ -7,12 +7,15 @@ Retour utilisateur (capture du .doc généré) : le corps du texte affichait bie
 la formulation choisie (ex. Version CSSCT), mais le TITRE de chaque section
 (`<h2>`) affichait toujours la question brute d'origine du salarié. Cause :
 `js/export.js` utilisait `d.resume || q.format` pour le titre — `resume`
-correspond souvent au texte brut, jamais à la formulation retenue. Corrigé :
-nouvelle fonction `titleFor(q)` qui dérive le titre UNIQUEMENT de la
-formulation choisie (`q.texte`, tronqué à 100 caractères si besoin), utilisée
-à la fois dans le titre du Word/PDF (`buildHTML`) et la première ligne de la
-copie email (`toClipboard`). La question de base n'apparaît plus nulle part
-dans les exports une fois une formulation choisie.
+correspond souvent au texte brut, jamais à la formulation retenue. Une
+première correction a introduit un titre tronqué dérivé de `q.texte`, mais
+retour utilisateur immédiat : il ne voulait aucun doublon ni aucune méta
+(pas de réf, pas de catégorie, pas d'établissement, pas de « Formulation
+retenue » ni de citation en double) — juste la question entière et
+complète, numérotée, et rien d'autre. `buildHTML` et `toClipboard` ne
+produisent plus qu'une ligne par question : « N. [texte intégral de la
+formulation choisie] ». Toutes les méta-informations (réf, catégorie,
+priorité, établissement, identité) ont été retirées de l'export.
 
 ## Réunions : retrait des demandes brutes automatiques — 2026-07-19
 **Statut : en cours**

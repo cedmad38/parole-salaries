@@ -7,54 +7,23 @@
    =================================================================== */
 (function (global) {
   'use strict';
-  const S = () => global.PS.store;
 
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // Titre court dérivé UNIQUEMENT de la formulation choisie (q.texte) — jamais du résumé
-  // ou du texte brut de la demande, pour ne jamais laisser réapparaître la question de base.
-  function titleFor(q) {
-    const t = q.texte || q.format || '';
-    return t.length > 100 ? t.slice(0, 100).replace(/\s+\S*$/, '') + '…' : t;
-  }
-
   // Construit le corps HTML d'un export à partir d'une liste d'items { demande, question }.
-  // Utilise TOUJOURS le texte de la formulation choisie (question.texte) — jamais le texte
-  // brut de la demande — pour que le fichier reflète exactement ce que l'élu a sélectionné.
+  // Uniquement la question entière choisie, numérotée — rien d'autre (pas de réf, pas de
+  // méta, pas d'établissement) : c'est le texte à lire tel quel en réunion.
   function buildHTML(items, opts) {
     opts = opts || {};
-    const anonymise = opts.anonymise !== false; // par défaut : version à communiquer = anonymisée
-    const store = S();
-    const rows = items.map(({ demande: d, question: q }, i) => {
-      const conf = store.CONFIDENTIALITE[d.confidentialite];
-      let identite = '';
-      if (!anonymise) {
-        const idr = store.identityFor(d, 'referent_confidentiel');
-        if (idr.visible && idr.data) identite = `<p><strong>Identité (réservé élus)&nbsp;:</strong> ${esc(idr.data.nom)} — ${esc(idr.data.contact)}</p>`;
-      }
-      return `
-      <section class="demande">
-        <h2>${i + 1}. ${esc(titleFor(q))}</h2>
-        <p class="meta">Réf. ${esc(d.publicRef)} · ${esc(q.instance)} ·
-           Catégorie&nbsp;: ${esc(d.categorie || '—')} · Priorité&nbsp;: ${esc(d.priorite)} ·
-           Formulation retenue&nbsp;: ${esc(q.format)} ·
-           ${esc(anonymise ? 'Version anonymisée' : conf.label)}</p>
-        ${d.etablissement ? `<p><strong>Établissement&nbsp;:</strong> ${esc(d.etablissement)}${d.service ? ' — ' + esc(d.service) : ''}</p>` : ''}
-        ${identite}
-        <blockquote>${esc(q.texte)}</blockquote>
-        ${d.reponsePubliee ? `<p><strong>Réponse publiée&nbsp;:</strong> ${esc(d.reponsePubliee)}</p>` : ''}
-      </section>`;
-    }).join('\n');
+    const anonymise = opts.anonymise !== false;
+    const rows = items.map(({ question: q }, i) => `<p class="q">${i + 1}. ${esc(q.texte)}</p>`).join('\n');
 
     const css = `
       body{font-family:Calibri,Arial,sans-serif;color:#16233b;line-height:1.5;max-width:820px;margin:24px auto;padding:0 16px}
       h1{color:#245fb0;border-bottom:3px solid #2f7de1;padding-bottom:8px}
       .doc-meta{color:#7686a0;font-size:13px;margin-bottom:20px}
-      h2{color:#1e2c4d;font-size:16px;margin-top:22px}
-      .meta{color:#7686a0;font-size:12px;margin:.2em 0 .6em}
-      blockquote{border-left:3px solid #d8e0ec;margin:.4em 0;padding:.2em 0 .2em 12px;color:#4a5a74;font-style:italic}
-      section.demande{page-break-inside:avoid;border-bottom:1px solid #eef3fa;padding-bottom:10px}
+      .q{margin:1em 0;page-break-inside:avoid}
     `;
     const title = esc(opts.titre || 'Questions préparées');
     return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${title}</title><style>${css}</style></head>
@@ -91,15 +60,9 @@
     setTimeout(() => w.print(), 350);
   }
 
-  // Copie email — texte simple. Items : [{ demande, question }] — toujours le texte choisi.
+  // Copie email — texte simple. Items : [{ demande, question }] — juste la question numérotée.
   async function toClipboard(items, opts) {
-    const anonymise = !opts || opts.anonymise !== false;
-    const txt = items.map(({ demande: d, question: q }, i) => {
-      return `${i + 1}. [${d.publicRef}] ${titleFor(q)}\n`
-           + `   Formulation retenue : ${q.format} · ${q.instance}\n`
-           + `   ${anonymise ? '(version anonymisée)' : ''}\n`
-           + `   ${q.texte}`;
-    }).join('\n\n');
+    const txt = items.map(({ question: q }, i) => `${i + 1}. ${q.texte}`).join('\n\n');
     const header = `Parole Salariés By Cedmad — ${opts && opts.titre || 'Questions'}\n\n`;
     try { await navigator.clipboard.writeText(header + txt); return true; }
     catch (e) { return false; }
