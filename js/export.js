@@ -16,21 +16,17 @@
   // méta, pas d'établissement) : c'est le texte à lire tel quel en réunion.
   function buildHTML(items, opts) {
     opts = opts || {};
-    const anonymise = opts.anonymise !== false;
     const rows = items.map(({ question: q }, i) => `<p class="q">${i + 1}. ${esc(q.texte)}</p>`).join('\n');
 
     const css = `
       body{font-family:Calibri,Arial,sans-serif;color:#16233b;line-height:1.5;max-width:820px;margin:24px auto;padding:0 16px}
-      h1{color:#245fb0;border-bottom:3px solid #2f7de1;padding-bottom:8px}
-      .doc-meta{color:#7686a0;font-size:13px;margin-bottom:20px}
+      h1{color:#245fb0;border-bottom:3px solid #2f7de1;padding-bottom:8px;margin-bottom:20px}
       .q{margin:1em 0;page-break-inside:avoid}
     `;
     const title = esc(opts.titre || 'Questions préparées');
     return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${title}</title><style>${css}</style></head>
       <body>
         <h1>Parole Salariés By Cedmad</h1>
-        <p class="doc-meta">${title} · Généré le ${new Date().toLocaleDateString('fr-FR')} ·
-        ${anonymise ? 'Version anonymisée à communiquer' : 'Version complète réservée aux élus'}</p>
         ${rows}
       </body></html>`;
   }

@@ -17,6 +17,11 @@ produisent plus qu'une ligne par question : « N. [texte intégral de la
 formulation choisie] ». Toutes les méta-informations (réf, catégorie,
 priorité, établissement, identité) ont été retirées de l'export.
 
+Retour utilisateur immédiat (encore) : même la ligne d'en-tête « Questions de
+réunion · Généré le [date] · Version anonymisée à communiquer » était de
+trop. Retirée du document Word/PDF — il ne reste que le titre « Parole
+Salariés By Cedmad » suivi directement des questions numérotées.
+
 ## Réunions : retrait des demandes brutes automatiques — 2026-07-19
 **Statut : en cours**
 
