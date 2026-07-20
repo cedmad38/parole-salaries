@@ -20,10 +20,12 @@ question posée est bien portée à la réunion qui suit.
   (accessible aux salariés non connectés), ne renvoie QUE ces deux dates,
   aucune autre donnée de l'organisation.
 - Portail salarié (`js/salarie.js`, écran d'accueil) : bandeau affiché
-  automatiquement si une date est configurée — « Prochaine réunion
-  CSE/CSSCT : [date]. Posez votre question avant le [date limite] pour
-  qu'elle y soit traitée. » Rien ne s'affiche tant que ce n'est pas
-  configuré.
+  automatiquement si une date est configurée — « Prochaine réunion :
+  [date] » sur une ligne, puis « Posez votre question avant le [date
+  limite] pour qu'elle y soit traitée. » sur la ligne suivante (retiré
+  « CSE/CSSCT » du libellé, chaque date reste entière — `white-space:nowrap`
+  — sans jamais se couper en plein milieu). Rien ne s'affiche tant que ce
+  n'est pas configuré.
 Migration appliquée en direct sur Supabase (colonnes + policy + fonction +
 grant, vérifiés par requête).
 

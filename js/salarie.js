@@ -60,9 +60,9 @@
       const host = box.querySelector('#reunion-banner');
       if (!host) return; // l'écran a déjà changé entre-temps
       const limite = r.dateLimiteQuestions
-        ? ` Posez votre question avant le <strong>${fmtDay(r.dateLimiteQuestions)}</strong> pour qu'elle y soit traitée.`
+        ? `<br>Posez votre question avant le <strong style="white-space:nowrap">${fmtDay(r.dateLimiteQuestions)}</strong> pour qu'elle y soit traitée.`
         : '';
-      host.innerHTML = `<div class="notice notice-info"><span class="ico">📅</span><div>Prochaine réunion CSE/CSSCT : <strong>${fmtDay(r.prochaineReunion)}</strong>.${limite}</div></div>`;
+      host.innerHTML = `<div class="notice notice-info"><span class="ico">📅</span><div>Prochaine réunion : <strong style="white-space:nowrap">${fmtDay(r.prochaineReunion)}</strong>${limite}</div></div>`;
     }).catch(() => {});
   }
 
