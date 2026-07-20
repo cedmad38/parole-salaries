@@ -495,6 +495,7 @@
     state.currentId = id; state.view = 'fiche'; render();
   }
   const RAW_TEXT_FORMAT = 'Texte original';
+  const ELU_FORMAT = 'Version Élu';
   async function viewFiche() {
     const d = data.demandeById(state.currentId);
     if (!d) { state.view = 'demandes'; render(); return; }
@@ -544,6 +545,11 @@
             <p class="hint">Généré à partir des faits recueillis — modifiable, jamais transmis automatiquement.${d.iaConfiance ? ' Confiance IA : <strong>' + escapeHTML(d.iaConfiance) + '</strong>.' : ''}</p>
             ${session.role === 'super_admin' && data.online() ? `<button class="btn btn-ghost btn-sm" id="ia-retry" type="button" style="margin-bottom:8px" title="Réservé au super-administrateur — protège le quota gratuit partagé">🔄 ${d.iaFormulations ? 'Régénérer avec l’IA' : (d.iaTraiteAt ? 'Réessayer la classification IA' : 'Classification IA en cours… forcer maintenant')}</button>` : ''}
             <div id="formuls"></div>
+          </div>
+          <div class="card card-pad">
+            <h3>✍️ Version Élu</h3>
+            <p class="hint">Votre propre reformulation de la question — à écrire ou coller librement (à partir de plusieurs échanges, par exemple). Vide par défaut, jamais générée par l'IA.</p>
+            <div id="elu-formul"></div>
           </div>
           ${d.iaDoublons && d.iaDoublons.length ? `<div class="card card-pad" style="border-left:3px solid var(--primary)">
             <h3>🔗 Doublons potentiels (§6.2) ${badge('✨ IA · Gemini', 'primary')}</h3>
@@ -614,6 +620,46 @@
       };
       fhost.appendChild(card);
     });
+
+    const ehost = box.querySelector('#elu-formul');
+    const isEluChosen = !!(currentQ && currentQ.format === ELU_FORMAT);
+    const eluCard = el('div', { class: 'formul' + (isEluChosen ? ' formul-chosen' : '') });
+    eluCard.innerHTML = `${isEluChosen ? badge('✓ Choisie pour la réunion', 'success') : ''}
+      ${editable
+        ? `<textarea id="elu-txt" placeholder="Écrivez ici votre propre formulation de la question…" style="min-height:90px;margin-top:6px">${escapeHTML(d.eluFormulation || '')}</textarea>`
+        : `<div class="txt">${escapeHTML(d.eluFormulation || '— (vide)')}</div>`}
+      <div class="acts" style="margin-top:8px">
+        ${editable ? '<button class="btn btn-sm btn-ghost" data-act="save-elu" type="button">Enregistrer</button>' : ''}
+        <button class="btn btn-sm btn-ghost" data-act="copy-elu" type="button">Copier</button>
+        ${editable ? (isEluChosen
+          ? '<button class="btn btn-sm btn-ghost" data-act="retirer-elu" type="button">Retirer de la réunion</button>'
+          : '<button class="btn btn-sm btn-primary" data-act="reunion-elu" type="button">→ Réunion</button>') : ''}
+      </div>`;
+    const eluTxt = eluCard.querySelector('#elu-txt');
+    const saveElu = eluCard.querySelector('[data-act="save-elu"]');
+    if (saveElu) saveElu.onclick = async () => {
+      await data.updateDemande(d.id, { eluFormulation: eluTxt.value }, session.nom);
+      await reload(); toast('Version élu enregistrée.'); render();
+    };
+    eluCard.querySelector('[data-act="copy-elu"]').onclick = async () => {
+      try { await navigator.clipboard.writeText((eluTxt ? eluTxt.value : d.eluFormulation) || ''); toast('Version élu copiée.'); }
+      catch (e) { toast('Copie impossible.', 'err'); }
+    };
+    const reunionElu = eluCard.querySelector('[data-act="reunion-elu"]');
+    if (reunionElu) reunionElu.onclick = async () => {
+      const texte = (eluTxt.value || '').trim();
+      if (!texte) { toast('Écrivez d\'abord votre formulation.', 'err'); return; }
+      await data.updateDemande(d.id, { eluFormulation: texte }, session.nom);
+      await data.replaceQuestionReunion({ demandeId: d.id, publicRef: d.publicRef, instance: d.instance, format: ELU_FORMAT, texte }, session.nom);
+      await reload(); toast('Version élu choisie pour la réunion.'); render();
+    };
+    const retirerElu = eluCard.querySelector('[data-act="retirer-elu"]');
+    if (retirerElu) retirerElu.onclick = async () => {
+      await data.removeFromReunion(d.id, session.nom);
+      await reload(); toast('Retirée de la préparation de réunion.'); render();
+    };
+    ehost.appendChild(eluCard);
+
     const dhost = box.querySelector('#doublons');
     if (dhost && d.iaDoublons) {
       d.iaDoublons.forEach(dup => {

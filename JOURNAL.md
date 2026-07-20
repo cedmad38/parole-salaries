@@ -1,5 +1,29 @@
 # Journal — Parole Salariés By Cedmad
 
+## Nouvelle carte « Version Élu » sur la fiche demande — 2026-07-19
+**Statut : en cours**
+
+Demande utilisateur : pouvoir reformuler soi-même une question (à partir de
+plusieurs échanges, librement), en plus des 7 formulations générées par
+l'IA — et pouvoir choisir cette version pour la réunion comme les autres.
+
+Ajouté sur la fiche demande, une nouvelle carte « ✍️ Version Élu » à côté de
+l'assistant de formulation IA :
+- Un champ texte vide au départ (jamais généré par l'IA), modifiable par
+  n'importe quel élu ayant les droits d'édition.
+- Bouton **Enregistrer** : sauvegarde le texte sur la demande (nouveau champ
+  `elu_formulation`), visible par tous les élus qui ouvrent la fiche.
+- Bouton **→ Réunion** : enregistre puis choisit cette version pour la
+  réunion, avec le même mécanisme que les formulations IA (un seul choix
+  actif à la fois par demande — choisir la Version Élu retire automatiquement
+  toute formulation IA précédemment choisie, et inversement via « Retirer de
+  la réunion »).
+
+Nécessite une nouvelle colonne `elu_formulation` sur `demandes` (migration
+appliquée en direct sur Supabase). Champ mappé dans `js/api.js`
+(`mapRow` + `updateDemande`) ; `js/store.js` n'a rien nécessité de
+particulier car `updateDemande` y fusionne déjà n'importe quel champ.
+
 ## Export réunion : le titre affichait encore la question de base — 2026-07-19
 **Statut : en cours**
 
