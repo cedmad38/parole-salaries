@@ -15,13 +15,13 @@ sorti du bloc `.hero` (qui ne contient plus que le titre) et enveloppé dans
 un `<div class="center">` pour conserver son centrage (il dépendait du
 `text-align:center` du `.hero`).
 
-**Anomalie corrigée pendant les tests** : la fonction SQL `next_reunion()`
-renvoyait par moments une valeur différente d'une lecture directe de la
-table `organisations`, y compris dans la même requête. Cause probable : le
-marqueur `stable` sur la fonction, qui autorise Postgres à réutiliser un
-résultat déjà calculé. Retiré (`next_reunion()` n'est plus déclarée
-`stable`) — cette fonction n'étant appelée qu'occasionnellement sur l'écran
-d'accueil du portail, le coût est négligeable.
+Fausse alerte pendant les tests : la valeur de `date_limite_questions`
+semblait « revenir en arrière » entre deux vérifications — en réalité c'est
+l'utilisateur qui corrigeait en direct la vraie date (22 juillet) via
+Administration pendant que des valeurs de test étaient écrites en parallèle
+depuis la session de débogage. Pas de bug. Le marqueur `stable` a quand
+même été retiré de `next_reunion()` au passage (changement neutre, sans
+lien avec cette fausse alerte).
 
 ## Date de la prochaine réunion visible côté salarié — 2026-07-20
 **Statut : validé**
