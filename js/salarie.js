@@ -3,7 +3,7 @@
    =================================================================== */
 (function () {
   'use strict';
-  const { $, el, toast, escapeHTML, fmtDate } = PS.ui;
+  const { $, el, toast, escapeHTML, fmtDate, fmtDay } = PS.ui;
   const store = PS.store, assistant = PS.assistant;
   const root = () => document.getElementById('app-root');
 

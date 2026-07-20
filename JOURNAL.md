@@ -27,6 +27,12 @@ question posée est bien portée à la réunion qui suit.
 Migration appliquée en direct sur Supabase (colonnes + policy + fonction +
 grant, vérifiés par requête).
 
+**Bug corrigé au test live** : le bandeau ne s'affichait pas sur le portail
+salarié — `fmtDay` était utilisé dans `js/salarie.js` sans être importé
+(seul `fmtDate` l'était), ce qui levait une erreur silencieusement avalée
+par le `.catch(() => {})` de l'appel à `nextReunion()`. Ajouté à la
+déstructuration `PS.ui` en tête de fichier.
+
 ## Administration : comptes élus groupés et repliés — 2026-07-19
 **Statut : validé**
 
