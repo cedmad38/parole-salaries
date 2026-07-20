@@ -8,6 +8,21 @@ Ajout d'une troisième ligne au bandeau du portail salarié (`js/salarie.js`) :
 suivante. » — pour rassurer les salariés qui déposent après la date limite :
 leur question n'est pas perdue, juste décalée à la réunion d'après.
 
+Inversé l'ordre des deux encadrés de l'écran d'accueil salarié : le bandeau
+« Prochaine réunion » apparaît maintenant AU-DESSUS de l'encadré de
+confidentialité (« Vos élus reçoivent votre message… »). Ce dernier a été
+sorti du bloc `.hero` (qui ne contient plus que le titre) et enveloppé dans
+un `<div class="center">` pour conserver son centrage (il dépendait du
+`text-align:center` du `.hero`).
+
+**Anomalie corrigée pendant les tests** : la fonction SQL `next_reunion()`
+renvoyait par moments une valeur différente d'une lecture directe de la
+table `organisations`, y compris dans la même requête. Cause probable : le
+marqueur `stable` sur la fonction, qui autorise Postgres à réutiliser un
+résultat déjà calculé. Retiré (`next_reunion()` n'est plus déclarée
+`stable`) — cette fonction n'étant appelée qu'occasionnellement sur l'écran
+d'accueil du portail, le coût est négligeable.
+
 ## Date de la prochaine réunion visible côté salarié — 2026-07-20
 **Statut : validé**
 

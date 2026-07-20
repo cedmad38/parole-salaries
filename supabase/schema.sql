@@ -331,7 +331,7 @@ end $$;
 -- Prochaine réunion CSE/CSSCT + date limite pour y poser une question — lecture publique,
 -- ne renvoie que ces deux dates (aucune autre donnée de l'organisation).
 create or replace function public.next_reunion()
-returns jsonb language sql stable security definer set search_path = public as $$
+returns jsonb language sql security definer set search_path = public as $$
   select coalesce(jsonb_build_object(
     'prochaine_reunion', prochaine_reunion,
     'date_limite_questions', date_limite_questions

@@ -40,9 +40,9 @@
     box.innerHTML = `
       <div class="hero">
         <h1>Votre parole compte</h1>
-        <div class="confidence"><span>🔒</span> Vos élus reçoivent votre message. Vous choisissez qui peut voir votre identité. Rien n'est transmis automatiquement à l'employeur.</div>
       </div>
       <div id="reunion-banner"></div>
+      <div class="center"><div class="confidence"><span>🔒</span> Vos élus reçoivent votre message. Vous choisissez qui peut voir votre identité. Rien n'est transmis automatiquement à l'employeur.</div></div>
       <div class="action-list"></div>
       <p class="center small muted" style="margin-top:18px">Aucun compte ni téléchargement nécessaire.</p>
     `;
