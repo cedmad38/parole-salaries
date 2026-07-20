@@ -1063,6 +1063,14 @@
       </div>
 
       <div class="card card-pad" style="margin-top:12px">
+        <h3>📅 Prochaine réunion CSE/CSSCT</h3>
+        <p class="hint">Affichée aux salariés sur le portail de dépôt, avec la date limite pour poser une question qui sera traitée à cette réunion.</p>
+        <div class="field"><label for="reunion-date">Date de la prochaine réunion</label><input id="reunion-date" type="date" value="${escapeHTML(org.prochaineReunion || '')}"></div>
+        <div class="field"><label for="reunion-limite">Date limite pour poser une question</label><input id="reunion-limite" type="date" value="${escapeHTML(org.dateLimiteQuestions || '')}"></div>
+        <button class="btn btn-primary btn-sm" id="save-reunion" type="button">Enregistrer</button>
+      </div>
+
+      <div class="card card-pad" style="margin-top:12px">
         <h3>🔐 Comptes de connexion</h3>
         <p class="hint">Créer un compte, le <strong>supprimer définitivement</strong> ou <strong>réinitialiser un mot de passe</strong> se fait dans Supabase (le plus sécurisé). Le rôle se règle ensuite ci-dessus.</p>
         ${data.online() ? `<a class="btn btn-ghost btn-sm" href="${supaUsersUrl()}" target="_blank" rel="noopener">Ouvrir la gestion des comptes Supabase ↗</a>` : '<p class="muted small">Mode local : comptes de démonstration.</p>'}
@@ -1090,6 +1098,17 @@
       db.organisation.seuilAnonymat = Math.max(1, parseInt(box.querySelector('#seuil').value, 10) || 5);
       db.organisation.conservationJours = Math.max(30, parseInt(box.querySelector('#cons').value, 10) || 365);
       store.save(db); toast('Paramètres enregistrés.');
+    };
+    box.querySelector('#save-reunion').onclick = async () => {
+      const btn = box.querySelector('#save-reunion'); btn.disabled = true; btn.textContent = '…';
+      try {
+        await data.updateOrganisation({
+          prochaineReunion: box.querySelector('#reunion-date').value || null,
+          dateLimiteQuestions: box.querySelector('#reunion-limite').value || null,
+        });
+        toast('Prochaine réunion enregistrée — visible sur le portail salarié.');
+      } catch (e) { toast('Enregistrement impossible' + (e && e.message ? ' : ' + e.message : '') + '.', 'err'); }
+      btn.disabled = false; btn.textContent = 'Enregistrer';
     };
     box.querySelector('#export-json').onclick = () => {
       const blob = new Blob([data.exportAll()], { type: 'application/json' });

@@ -1,5 +1,32 @@
 # Journal — Parole Salariés By Cedmad
 
+## Date de la prochaine réunion visible côté salarié — 2026-07-20
+**Statut : en cours**
+
+Demande utilisateur : pouvoir configurer la date de la prochaine réunion
+CSE/CSSCT ainsi que la date limite pour y poser une question, et l'afficher
+aux salariés sur le portail de dépôt — pour qu'ils sachent que chaque
+question posée est bien portée à la réunion qui suit.
+
+- Nouvelle carte **« 📅 Prochaine réunion CSE/CSSCT »** dans Administration
+  (`js/elus.js`) : deux champs date, bouton Enregistrer qui fonctionne
+  vraiment cette fois (contrairement à « Protection des statistiques » qui
+  ne fait qu'indiquer d'éditer Supabase directement — il manquait une
+  policy RLS d'update sur `organisations`, maintenant ajoutée : `org_admin_upd`,
+  réservée aux rôles admin CSE / super-admin).
+- Nouvelle colonne `prochaine_reunion` et `date_limite_questions` sur
+  `organisations`.
+- Nouvelle fonction SQL `public.next_reunion()` — lecture publique
+  (accessible aux salariés non connectés), ne renvoie QUE ces deux dates,
+  aucune autre donnée de l'organisation.
+- Portail salarié (`js/salarie.js`, écran d'accueil) : bandeau affiché
+  automatiquement si une date est configurée — « Prochaine réunion
+  CSE/CSSCT : [date]. Posez votre question avant le [date limite] pour
+  qu'elle y soit traitée. » Rien ne s'affiche tant que ce n'est pas
+  configuré.
+Migration appliquée en direct sur Supabase (colonnes + policy + fonction +
+grant, vérifiés par requête).
+
 ## Administration : comptes élus groupés et repliés — 2026-07-19
 **Statut : validé**
 

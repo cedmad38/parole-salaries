@@ -254,16 +254,31 @@
   }
   async function etablissements() { const { data } = await db().from('etablissements').select('*'); return data || []; }
   async function organisation() { const { data } = await db().from('organisations').select('*').limit(1).single(); return data; }
+  async function updateOrganisation(patch) {
+    const map = { seuilAnonymat: 'seuil_anonymat', conservationJours: 'conservation_jours',
+      prochaineReunion: 'prochaine_reunion', dateLimiteQuestions: 'date_limite_questions' };
+    const row = {}; for (const k in map) if (k in patch) row[map[k]] = patch[k];
+    const { data: org } = await db().from('organisations').select('id').limit(1).single();
+    if (!org) throw new Error('Organisation introuvable.');
+    const { error } = await db().from('organisations').update(row).eq('id', org.id);
+    if (error) throw error;
+  }
+  // Portail salarié (anonyme) : uniquement les deux dates de la prochaine réunion, rien d'autre.
+  async function nextReunion() {
+    const { data, error } = await db().rpc('next_reunion');
+    if (error) throw error;
+    return { prochaineReunion: (data && data.prochaine_reunion) || '', dateLimiteQuestions: (data && data.date_limite_questions) || '' };
+  }
 
   global.PS = global.PS || {};
   global.PS.api = {
     init, online: true,
-    createDemande, trackByRef, trackFull, addSalariePrecision, classifyDemande,
+    createDemande, trackByRef, trackFull, addSalariePrecision, classifyDemande, nextReunion,
     login, logout, currentSession, listElus, updateElu,
     signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
     getDemandes, getDemande, updateDemande, addEluMessage, messagesFor, piecesFor,
     revealIdentity, mergeDemandes, deleteDemande, addReponseDirection, addAction, updateAction, actionsFor, reponsesFor,
     messagesAll, actionsAll, reponsesAll,
-    addQuestionReunion, replaceQuestionReunion, removeFromReunion, deleteQuestionReunion, questionsReunion, stats, etablissements, organisation,
+    addQuestionReunion, replaceQuestionReunion, removeFromReunion, deleteQuestionReunion, questionsReunion, stats, etablissements, organisation, updateOrganisation,
   };
 })(window);

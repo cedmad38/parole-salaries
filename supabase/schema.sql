@@ -22,6 +22,8 @@ create table if not exists organisations (
   nom text not null,
   seuil_anonymat int not null default 5,
   conservation_jours int not null default 1095,
+  prochaine_reunion date,        -- date de la prochaine réunion CSE/CSSCT, affichée aux salariés
+  date_limite_questions date,    -- date limite pour poser une question qui sera traitée à cette réunion
   created_at timestamptz not null default now()
 );
 
@@ -193,6 +195,11 @@ alter table actions_suivi     enable row level security;
 create policy org_read   on organisations  for select to authenticated using (true);
 create policy etab_read  on etablissements  for select to authenticated using (true);
 
+-- Seul un admin (CSE ou super) peut modifier les paramètres de l'organisation
+-- (seuil anti-réidentification, conservation, prochaine réunion, date limite).
+create policy org_admin_upd on organisations for update to authenticated
+  using (public.is_admin()) with check (public.is_admin());
+
 -- Profils élus : chacun voit le sien ; l'admin voit tout ; l'admin gère
 create policy elu_self   on elus for select to authenticated using (id = auth.uid() or public.is_admin());
 create policy elu_admin_upd on elus for update to authenticated using (public.is_admin()) with check (public.is_admin());
@@ -321,6 +328,17 @@ begin
   return jsonb_build_object('public_ref', v_ref, 'secret', v_secret);
 end $$;
 
+-- Prochaine réunion CSE/CSSCT + date limite pour y poser une question — lecture publique,
+-- ne renvoie que ces deux dates (aucune autre donnée de l'organisation).
+create or replace function public.next_reunion()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_build_object(
+    'prochaine_reunion', prochaine_reunion,
+    'date_limite_questions', date_limite_questions
+  ), '{}'::jsonb)
+  from public.organisations order by created_at limit 1;
+$$;
+
 -- Suivi par numéro seul : statut uniquement (aucune donnée sensible)
 create or replace function public.track_status(p_ref text)
 returns jsonb language plpgsql security definer set search_path = public as $$
@@ -407,6 +425,7 @@ end $$;
 -- ------------------------------------------------------------------
 -- 7. DROITS D'EXÉCUTION
 -- ------------------------------------------------------------------
+grant execute on function public.next_reunion()          to anon, authenticated;
 grant execute on function public.submit_demande(jsonb) to anon, authenticated;
 grant execute on function public.track_status(text)     to anon, authenticated;
 grant execute on function public.track_full(text, text)  to anon, authenticated;

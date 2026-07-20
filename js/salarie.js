@@ -42,6 +42,7 @@
         <h1>Votre parole compte</h1>
         <div class="confidence"><span>🔒</span> Vos élus reçoivent votre message. Vous choisissez qui peut voir votre identité. Rien n'est transmis automatiquement à l'employeur.</div>
       </div>
+      <div id="reunion-banner"></div>
       <div class="action-list"></div>
       <p class="center small muted" style="margin-top:18px">Aucun compte ni téléchargement nécessaire.</p>
     `;
@@ -53,6 +54,16 @@
       ]));
     });
     mount(box);
+    // Prochaine réunion CSE/CSSCT — chargée à part pour ne pas bloquer l'affichage de l'écran.
+    PS.data.nextReunion().then((r) => {
+      if (!r || !r.prochaineReunion) return;
+      const host = box.querySelector('#reunion-banner');
+      if (!host) return; // l'écran a déjà changé entre-temps
+      const limite = r.dateLimiteQuestions
+        ? ` Posez votre question avant le <strong>${fmtDay(r.dateLimiteQuestions)}</strong> pour qu'elle y soit traitée.`
+        : '';
+      host.innerHTML = `<div class="notice notice-info"><span class="ico">📅</span><div>Prochaine réunion CSE/CSSCT : <strong>${fmtDay(r.prochaineReunion)}</strong>.${limite}</div></div>`;
+    }).catch(() => {});
   }
 
   /* ======================= ÉCRAN QUESTION RAPIDE ======================= */

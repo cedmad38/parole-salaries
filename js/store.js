@@ -218,6 +218,10 @@
     save(db);
     return true;
   }
+  function nextReunion() {
+    const o = get().organisation || {};
+    return { prochaineReunion: o.prochaineReunion || '', dateLimiteQuestions: o.dateLimiteQuestions || '' };
+  }
 
   /* ---------------- Accès contrôlé à l'identité (§8, §9) ------------- */
   // Détermine ce qu'un rôle peut voir de l'identité selon le niveau de confidentialité.
@@ -442,6 +446,11 @@
     save(db);
     return true;
   }
+  function updateOrganisation(patch) {
+    const db = get();
+    Object.assign(db.organisation, patch);
+    save(db);
+  }
   function resetDemo() { localStorage.removeItem(KEY); return save(seed()); }
   function exportAll() { return JSON.stringify(get(), null, 2); }
 
@@ -453,11 +462,11 @@
     // accès
     get, save, resetDemo, exportAll,
     // salarié
-    createDemande, trackByRef, trackFull, addSalariePrecision,
+    createDemande, trackByRef, trackFull, addSalariePrecision, nextReunion,
     // élus
     login, listElus, updateElu, updateDemande, addEluMessage, messagesFor, piecesFor, identityFor,
     mergeDemandes, deleteDemande, addReponseDirection, addAction, updateAction, actionsFor, reponsesFor,
-    addQuestionReunion, replaceQuestionReunion, removeFromReunion, deleteQuestionReunion, questionsReunion, stats,
+    addQuestionReunion, replaceQuestionReunion, removeFromReunion, deleteQuestionReunion, questionsReunion, stats, updateOrganisation,
     // helpers
     uid, now,
   };

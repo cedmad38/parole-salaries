@@ -25,16 +25,19 @@
     const m = {}; (arr || []).forEach(x => { (m[x[key]] = m[x[key]] || []).push(x); }); return m;
   }
   function normOrg(o) {
-    if (!o) return { nom: '', seuilAnonymat: 5, conservationJours: 1095 };
+    if (!o) return { nom: '', seuilAnonymat: 5, conservationJours: 1095, prochaineReunion: '', dateLimiteQuestions: '' };
     return {
       nom: o.nom || '',
       seuilAnonymat: o.seuilAnonymat != null ? o.seuilAnonymat : (o.seuil_anonymat != null ? o.seuil_anonymat : 5),
       conservationJours: o.conservationJours != null ? o.conservationJours : (o.conservation_jours != null ? o.conservation_jours : 1095),
+      prochaineReunion: o.prochaineReunion || o.prochaine_reunion || '',
+      dateLimiteQuestions: o.dateLimiteQuestions || o.date_limite_questions || '',
     };
   }
 
   /* ---------------- Portail salarié (async) ---------------- */
   async function createDemande(i)          { return online() ? api().createDemande(i)            : store().createDemande(i); }
+  async function nextReunion()             { return online() ? api().nextReunion()               : store().nextReunion(); }
   async function trackByRef(r)             { return online() ? api().trackByRef(r)               : store().trackByRef(r); }
   async function trackFull(r, s)           { return online() ? api().trackFull(r, s)             : store().trackFull(r, s); }
   async function addSalariePrecision(r, s, t) { return online() ? api().addSalariePrecision(r, s, t) : store().addSalariePrecision(r, s, t); }
@@ -131,6 +134,10 @@
     if (!online()) throw new Error("La classification IA nécessite le mode en ligne.");
     return api().classifyDemande(publicRef, force);
   }
+  async function updateOrganisation(patch) {
+    if (online()) await api().updateOrganisation(patch); else store().updateOrganisation(patch);
+    snap.organisation = normOrg(Object.assign({}, snap.organisation, patch));
+  }
 
   /* ---------------- Statistiques (depuis l'instantané) ---------------- */
   function stats() {
@@ -157,12 +164,12 @@
   global.PS = global.PS || {};
   global.PS.data = {
     online,
-    createDemande, trackByRef, trackFull, addSalariePrecision,
+    createDemande, trackByRef, trackFull, addSalariePrecision, nextReunion,
     login, logout, currentSession, listElus, updateElu,
     signUp, resetPasswordForEmail, updatePassword, onAuthStateChange,
     loadElus, demandes, demandeById, etablissements, organisation, questionsReunion,
     messagesFor, actionsFor, allActions, reponsesFor, revealIdentity,
     updateDemande, addEluMessage, addReponseDirection, addAction, updateAction, addQuestionReunion, replaceQuestionReunion, removeFromReunion, deleteQuestionReunion, mergeDemandes, deleteDemande, classifyDemande,
-    stats, exportAll,
+    stats, exportAll, updateOrganisation,
   };
 })(window);
