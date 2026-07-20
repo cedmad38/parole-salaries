@@ -61,6 +61,7 @@
       if (!host) return; // l'écran a déjà changé entre-temps
       const limite = r.dateLimiteQuestions
         ? `<br>Posez votre question avant le <strong style="white-space:nowrap">${fmtDay(r.dateLimiteQuestions)}</strong> pour qu'elle y soit traitée.`
+          + `<br>Les questions posées après cette date seront traitées à la réunion suivante.`
         : '';
       host.innerHTML = `<div class="notice notice-info"><span class="ico">📅</span><div>Prochaine réunion : <strong style="white-space:nowrap">${fmtDay(r.prochaineReunion)}</strong>${limite}</div></div>`;
     }).catch(() => {});
