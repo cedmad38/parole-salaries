@@ -1,5 +1,24 @@
 # Journal — Parole Salariés By Cedmad
 
+## Administration : comptes élus groupés et repliés — 2026-07-19
+**Statut : en cours**
+
+Demande utilisateur : la liste des comptes dans Administration obligeait à
+beaucoup scroller (chaque compte affichait en permanence rôle, secteurs
+cochables, boutons). Refonte de `eluRow()` dans `js/elus.js` :
+- Chaque compte est maintenant un `<details>` **replié par défaut** — une
+  seule ligne résumé (nom, badge rôle, badge « Bloqué » le cas échéant,
+  email, nombre de secteurs), cliquable pour déplier le formulaire complet
+  (rôle, secteurs, activer/désactiver, réinitialisation mot de passe).
+- Les comptes « En attente de validation » restent **dépliés par défaut**
+  (ce sont ceux qui demandent une action immédiate).
+- Les comptes sont désormais **regroupés par rôle** (en attente en premier,
+  puis super-admin, admin CSE, référent confidentiel, gestionnaire,
+  lecteur) avec un petit en-tête de groupe, au lieu d'une liste plate dans
+  l'ordre de retour de l'API.
+Nouveau CSS dans `css/elus.css` (`.elu-group-h`, `.elu-row`) pour le rendu
+compact et le chevron d'ouverture/fermeture.
+
 ## Nouvelle carte « Version Élu » sur la fiche demande — 2026-07-19
 **Statut : en cours**
 

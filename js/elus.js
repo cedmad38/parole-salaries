@@ -984,26 +984,35 @@
   function eluRow(u, etabs) {
     const pending = u.role === 'en_attente';
     const roleLocked = u.role === 'super_admin';
-    const row = el('div', { class: 'card-pad', style: `border:1px solid ${pending ? 'var(--warn)' : 'var(--border)'};border-radius:12px;margin-bottom:10px;background:${pending ? 'var(--warn-soft)' : 'var(--surface)'}` });
     const self = u.id === session.id;
+    const nbSect = (u.perimetre || []).length;
+    const row = el('details', { class: 'elu-row', style: `border:1px solid ${pending ? 'var(--warn)' : 'var(--border)'};border-radius:12px;margin-bottom:8px;background:${pending ? 'var(--warn-soft)' : 'var(--surface)'}`, open: pending ? '' : null });
     row.innerHTML = `
-      <div class="row-between"><strong>${escapeHTML(u.nom || '—')}${self ? ' <span class="badge badge-primary">vous</span>' : ''}${pending ? ' ' + badge('En attente de validation', 'warn') : ''}</strong>
-        <span class="small muted">${escapeHTML(u.email || '')}</span></div>
-      <div class="row" style="margin-top:8px;align-items:flex-end;gap:14px">
-        <div class="field" style="margin:0;min-width:190px"><label class="small">Rôle (statut)</label>
-          ${roleLocked
-            ? `<select data-role disabled title="Le rôle super-administrateur ne peut pas être changé ici."><option value="super_admin" selected>${escapeHTML(store.ROLES.super_admin.label)}</option></select>`
-            : `<select data-role>${Object.entries(store.ROLES).filter(([k]) => k !== 'salarie' && k !== 'super_admin').map(([k, v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>`}
-          ${roleLocked ? `<div class="hint">🔒 Rôle verrouillé — non modifiable depuis cette interface.</div>` : ''}
+      <summary class="elu-row-summary">
+        <strong>${escapeHTML(u.nom || '—')}</strong>
+        ${self ? badge('vous', 'primary') : ''}
+        ${pending ? badge('En attente de validation', 'warn') : badge((store.ROLES[u.role] || {}).label || u.role, roleLocked ? 'danger' : 'mute')}
+        ${u.actif === false ? badge('Bloqué', 'danger') : ''}
+        <span class="small muted elu-row-email">${escapeHTML(u.email || '')}</span>
+        <span class="small muted">${nbSect ? nbSect + ' secteur' + (nbSect > 1 ? 's' : '') : (u.role === 'admin_cse' || u.role === 'super_admin' ? 'tous secteurs' : '—')}</span>
+      </summary>
+      <div class="card-pad" style="padding-top:6px">
+        <div class="row" style="margin-top:8px;align-items:flex-end;gap:14px">
+          <div class="field" style="margin:0;min-width:190px"><label class="small">Rôle (statut)</label>
+            ${roleLocked
+              ? `<select data-role disabled title="Le rôle super-administrateur ne peut pas être changé ici."><option value="super_admin" selected>${escapeHTML(store.ROLES.super_admin.label)}</option></select>`
+              : `<select data-role>${Object.entries(store.ROLES).filter(([k]) => k !== 'salarie' && k !== 'super_admin').map(([k, v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>`}
+            ${roleLocked ? `<div class="hint">🔒 Rôle verrouillé — non modifiable depuis cette interface.</div>` : ''}
+          </div>
+          <label class="small" style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" data-actif ${u.actif !== false ? 'checked' : ''} style="width:auto"> Compte actif</label>
         </div>
-        <label class="small" style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" data-actif ${u.actif !== false ? 'checked' : ''} style="width:auto"> Compte actif</label>
-      </div>
-      <div style="margin-top:10px"><div class="small muted" style="margin-bottom:4px">Secteurs autorisés :</div>
-        <div class="pill-list" data-sect>${etabs.map(e => `<label class="badge" style="cursor:pointer;font-weight:400"><input type="checkbox" value="${e.id}" ${(u.perimetre || []).includes(e.id) ? 'checked' : ''} style="width:auto;margin-right:5px">${escapeHTML(e.nom)}</label>`).join('') || '<span class="small muted">Aucun secteur.</span>'}</div>
-        <div class="hint">Admin & super-admin voient tout, quels que soient les secteurs.</div></div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn btn-primary btn-sm" data-save type="button">Enregistrer</button>
-        ${data.online() && u.email ? `<button class="btn btn-ghost btn-sm" data-sendreset type="button">✉️ Envoyer un lien de réinitialisation</button>` : ''}
+        <div style="margin-top:10px"><div class="small muted" style="margin-bottom:4px">Secteurs autorisés :</div>
+          <div class="pill-list" data-sect>${etabs.map(e => `<label class="badge" style="cursor:pointer;font-weight:400"><input type="checkbox" value="${e.id}" ${(u.perimetre || []).includes(e.id) ? 'checked' : ''} style="width:auto;margin-right:5px">${escapeHTML(e.nom)}</label>`).join('') || '<span class="small muted">Aucun secteur.</span>'}</div>
+          <div class="hint">Admin & super-admin voient tout, quels que soient les secteurs.</div></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-primary btn-sm" data-save type="button">Enregistrer</button>
+          ${data.online() && u.email ? `<button class="btn btn-ghost btn-sm" data-sendreset type="button">✉️ Envoyer un lien de réinitialisation</button>` : ''}
+        </div>
       </div>`;
     const rb = row.querySelector('[data-sendreset]');
     if (rb) rb.onclick = async () => {
@@ -1094,8 +1103,19 @@
       const elus = await data.listElus();
       const etabs = data.etablissements();
       host.innerHTML = '';
-      if (!elus.length) host.innerHTML = '<p class="muted small">Aucun élu trouvé.</p>';
-      elus.forEach(u => host.appendChild(eluRow(u, etabs)));
+      if (!elus.length) { host.innerHTML = '<p class="muted small">Aucun élu trouvé.</p>'; }
+      else {
+        // Regroupés par rôle — évite de faire défiler une longue liste plate.
+        const order = ['en_attente', 'super_admin', 'admin_cse', 'referent_confidentiel', 'elu_gestionnaire', 'elu_lecteur'];
+        order.forEach(role => {
+          const group = elus.filter(u => u.role === role);
+          if (!group.length) return;
+          host.appendChild(el('div', { class: 'elu-group-h', text: `${(store.ROLES[role] || {}).label || role} (${group.length})` }));
+          group.forEach(u => host.appendChild(eluRow(u, etabs)));
+        });
+        const known = new Set(order);
+        elus.filter(u => !known.has(u.role)).forEach(u => host.appendChild(eluRow(u, etabs)));
+      }
     } catch (e) { host.innerHTML = '<p class="muted small">Impossible de charger les élus.</p>'; }
   }
 

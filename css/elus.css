@@ -95,6 +95,21 @@
 .formul .txt { background: var(--surface-2); border-radius: var(--r-sm); padding: 10px; white-space: pre-wrap; font-size: .9rem; }
 .formul .acts { display: flex; gap: 6px; margin-top: 8px; }
 
+/* Comptes élus — Administration (groupés par rôle, repliés) */
+.elu-group-h { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-mute); margin: 16px 0 6px; }
+.elu-group-h:first-child { margin-top: 0; }
+.elu-row summary.elu-row-summary {
+  cursor: pointer; list-style: none; padding: 10px 12px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.elu-row summary.elu-row-summary::-webkit-details-marker { display: none; }
+.elu-row summary.elu-row-summary::before { content: '▸'; color: var(--text-mute); font-size: .8rem; transition: transform .12s; }
+.elu-row[open] summary.elu-row-summary::before { transform: rotate(90deg); }
+.elu-row-email { margin-left: auto; }
+@media (max-width: 640px) {
+  .elu-row-email { margin-left: 0; flex-basis: 100%; }
+}
+
 /* Login */
 .login-wrap { max-width: 420px; margin: 8vh auto; padding: 0 16px; }
 .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 26px; box-shadow: var(--shadow-lg); }
