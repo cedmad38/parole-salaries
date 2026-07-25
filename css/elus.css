@@ -186,8 +186,17 @@ table.heatmap td.hm-total { font-weight: 700; background: var(--surface-2); }
   background: linear-gradient(120deg, #2ec4a6, #2f7de1, #7c4ddb);
   box-shadow: 0 8px 24px rgba(16,33,58,.28); cursor: pointer;
 }
+/* Croix « ne plus proposer » — l'invite d'installation réapparaissait sinon à chaque
+   ouverture dans un onglet normal, même une fois l'application installée. */
+.pwa-install-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; margin-left: 2px; border-radius: 50%;
+  background: rgba(255,255,255,.22); font-size: 11px; line-height: 1; cursor: pointer; flex-shrink: 0;
+}
+.pwa-install-close:hover, .pwa-install-close:focus-visible { background: rgba(255,255,255,.42); outline: none; }
+
 @media (max-width: 640px) {
-  .pwa-install-btn { right: 12px; bottom: 12px; padding: 12px; border-radius: 999px; }
+  .pwa-install-btn { right: 12px; bottom: 12px; padding: 10px 12px; border-radius: 999px; }
   .pwa-install-btn .lbl { display: none; }
   .elus-main { padding-bottom: 72px; }
 }

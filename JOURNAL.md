@@ -1,5 +1,29 @@
 # Journal — Parole Salariés By Cedmad
 
+## « Installer l'application » réapparaissait sans fin — 2026-07-20
+**Statut : en cours**
+
+Retour utilisateur : l'invite d'installation restait affichée même après avoir
+installé l'application.
+
+Cause : la seule condition d'affichage était `isStandalone`, qui répond à
+« cette page tourne-t-elle **en ce moment** dans l'app installée ? » — et non
+« l'app est-elle installée ? ». Rouvert dans un onglet de navigateur normal,
+`isStandalone` repasse à `false` et l'invite revenait. Sur **Safari**, c'était
+systématique : la branche Safari affichait le bouton sans aucune condition liée
+à l'installation, et aucune API ne permet de la détecter — l'invite ne pouvait
+donc jamais disparaître.
+
+Correction dans `elus.html` : le choix est mémorisé (`localStorage`,
+`ps_install_dismissed`). L'invite ne revient plus dès lors que
+l'application a été installée (événement `appinstalled`), que l'invite native a
+été utilisée, ou que l'utilisateur a cliqué la nouvelle **croix ✕** ajoutée sur
+le bouton (utile sur Safari, seul moyen de dire « c'est déjà fait »).
+
+Bug secondaire corrigé au passage : la branche Safari faisait
+`installBtn.innerHTML = …`, ce qui aurait détruit la croix ✕ ; remplacé par une
+écriture ciblée sur le seul libellé (`.lbl`).
+
 ## Secteur vide affiché « Tous les secteurs » — 2026-07-20
 **Statut : en cours**
 

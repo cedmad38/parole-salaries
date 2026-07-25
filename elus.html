@@ -20,6 +20,8 @@
   <!-- Bouton d'installation de l'application (PWA — icône Dock, fenêtre indépendante) -->
   <button id="install-btn" class="pwa-install-btn" type="button" hidden>
     ⬇︎<span class="lbl"> Installer l'application</span>
+    <span id="install-close" class="pwa-install-close" role="button" tabindex="0"
+          aria-label="Ne plus proposer l'installation" title="Ne plus proposer">✕</span>
   </button>
 
   <!-- Librairie Supabase + configuration + pilote en ligne (prêts) -->
@@ -42,24 +44,36 @@
     }
     // Invite d'installation (Chrome / Edge sur Mac)
     const installBtn = document.getElementById('install-btn');
+    const closeBtn = document.getElementById('install-close');
     let deferredPrompt = null;
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    // `isStandalone` dit seulement « cette page tourne-t-elle DANS l'app installée ».
+    // Rouvert dans un onglet normal, il repasse à false et l'invite réapparaissait alors
+    // que l'app était déjà installée (et sur Safari, aucune API ne permet de le savoir).
+    // On mémorise donc le choix : installée ou écartée = on ne propose plus.
+    const HIDE_KEY = 'ps_install_dismissed';
+    const isDismissed = () => { try { return localStorage.getItem(HIDE_KEY) === '1'; } catch (e) { return false; } };
+    const dismiss = () => { try { localStorage.setItem(HIDE_KEY, '1'); } catch (e) {} installBtn.hidden = true; };
+    const canOffer = () => !isStandalone && !isDismissed();
+    closeBtn.addEventListener('click', (e) => { e.stopPropagation(); dismiss(); });
+    closeBtn.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); dismiss(); } });
+
     window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault(); deferredPrompt = e; if (!isStandalone) installBtn.hidden = false;
+      e.preventDefault(); deferredPrompt = e; if (canOffer()) installBtn.hidden = false;
     });
     installBtn.addEventListener('click', async () => {
       if (!deferredPrompt) return;
-      deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.hidden = true;
+      deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; dismiss();
     });
-    window.addEventListener('appinstalled', () => { installBtn.hidden = true; });
-    // Safari (macOS) : pas d'invite auto → indice discret pour « Ajouter au Dock »
+    window.addEventListener('appinstalled', dismiss);
+    // Safari (macOS/iOS) : pas d'invite auto → indice discret pour « Ajouter au Dock »
     const isSafari = /^((?!chrome|android|crios|edg).)*safari/i.test(navigator.userAgent);
-    if (isSafari && !isStandalone) {
+    if (isSafari && canOffer()) {
       installBtn.hidden = false;
-      installBtn.innerHTML = '⬇︎<span class="lbl"> Ajouter au Dock (menu Fichier)</span>';
+      installBtn.querySelector('.lbl').textContent = ' Ajouter au Dock (menu Fichier)';
       installBtn.addEventListener('click', () => {
-        alert("Dans Safari : menu « Fichier » → « Ajouter au Dock… » pour installer l'espace élus comme application, avec sa propre fenêtre.");
-      }, { once: false });
+        alert("Dans Safari : menu « Fichier » → « Ajouter au Dock… » pour installer l'espace élus comme application, avec sa propre fenêtre.\n\nDéjà fait ? Cliquez sur la croix ✕ pour ne plus voir cette invite.");
+      });
     }
   </script>
 </body>
