@@ -37,6 +37,15 @@ seuil protège contre la réidentification dans les **agrégats** ; il ne
 restreint pas l'accès de l'élu aux dossiers de son périmètre, qu'il peut
 déjà lister et filtrer manuellement dans l'onglet Demandes.
 
+**Bug de mise en page corrigé (pré-existant)** : sur la page Statistiques,
+toute la page débordait de 120 px vers la droite. Cause : `.elus-main` est
+un élément flex avec `min-width: auto` par défaut, donc le tableau croisé
+(en `white-space: nowrap`, ~1080 px) lui imposait sa largeur — le
+`overflow-x: auto` de son cadre `.hm-scroll` ne pouvait jamais s'appliquer.
+Corrigé par `min-width: 0` sur `.elus-main` : le tableau défile désormais
+dans son propre cadre, la page ne bouge plus latéralement. Existait avant
+cette évolution, mais gênait d'autant plus une page devenue cliquable.
+
 ## Bandeau réunion : précision sur les questions tardives — 2026-07-20
 **Statut : en cours**
 

@@ -43,7 +43,10 @@
 .elus-nav a.active { background: var(--primary-soft); color: var(--primary-dark); }
 .elus-nav a .n { margin-left: auto; background: var(--danger); color: #fff; font-size: .7rem; border-radius: 999px; padding: 1px 7px; }
 
-.elus-main { flex: 1; padding: 22px; max-width: 1100px; }
+/* min-width:0 — sans ça, un enfant large (le tableau croisé des statistiques, en
+   white-space:nowrap) impose sa largeur au conteneur flex et décale toute la page
+   horizontalement, au lieu de défiler dans son propre cadre (.hm-scroll). */
+.elus-main { flex: 1; min-width: 0; padding: 22px; max-width: 1100px; }
 .elus-main h1 { font-size: 1.4rem; margin-bottom: 4px; }
 .page-sub { color: var(--text-mute); margin-bottom: 18px; }
 
