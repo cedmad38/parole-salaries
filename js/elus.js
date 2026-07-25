@@ -11,7 +11,8 @@
   const appRoot = () => document.getElementById('elus-app');
 
   let session = null;
-  let state = { view: 'dashboard', currentId: null, filters: { statut: '', cat: '', etab: '', q: '' } };
+  const EMPTY_FILTERS = { statut: '', cat: '', etab: '', mois: '', q: '' };
+  let state = { view: 'dashboard', currentId: null, filters: Object.assign({}, EMPTY_FILTERS) };
   const SESSION_KEY = 'ps_session';
 
   async function reload() { await data.loadElus(); }
@@ -287,9 +288,16 @@
   function wireKPIs() {
     document.querySelectorAll('.kpi[data-view]').forEach(k => k.addEventListener('click', () => {
       state.view = k.dataset.view;
-      try { state.filters = Object.assign({ statut: '', cat: '', etab: '', q: '' }, JSON.parse(k.dataset.filters || '{}')); } catch (e) {}
+      try { state.filters = Object.assign({}, EMPTY_FILTERS, JSON.parse(k.dataset.filters || '{}')); } catch (e) {}
       render();
     }));
+  }
+  // Ouvre la liste des demandes filtrée — utilisé par les statistiques cliquables
+  // (camemberts, tableau croisé, évolution par mois) pour passer du chiffre au dossier.
+  function goToDemandes(filters) {
+    state.filters = Object.assign({}, EMPTY_FILTERS, filters || {});
+    state.view = 'demandes';
+    render();
   }
   function kpi(v, label, kind, view, filters) {
     return `<div class="kpi ${kind}" data-view="${view}" data-filters='${JSON.stringify(filters || {})}'>
@@ -438,8 +446,19 @@
   }
 
   /* ======================= LISTE DEMANDES ======================= */
+  // Valeurs « fourre-tout » des statistiques : une demande sans catégorie est comptée
+  // sous « Non classé », sans secteur sous « — ». Les filtres doivent donc les traduire
+  // en « champ vide » plutôt que de chercher ce libellé tel quel.
+  const CAT_NONE = 'Non classé', ETAB_NONE = '—';
+  const moisLabel = (m) => {
+    const [y, mo] = String(m || '').split('-');
+    if (!y || !mo) return m || '';
+    const d = new Date(Number(y), Number(mo) - 1, 1);
+    return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  };
   function viewDemandes() {
     const box = el('div');
+    const etabs = data.etablissements();
     box.innerHTML = `
       <h1>Demandes</h1>
       <p class="page-sub">Traitez, classez et suivez les demandes de votre périmètre.</p>
@@ -447,9 +466,40 @@
         <input id="f-q" type="search" placeholder="Rechercher…" value="${escapeHTML(state.filters.q)}">
         <select id="f-statut"><option value="">Tous les statuts</option>${store.STATUTS.map(s => `<option ${state.filters.statut === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
         <select id="f-cat"><option value="">Toutes catégories</option>${store.CATEGORIES.map(s => `<option ${state.filters.cat === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
+        <select id="f-etab"><option value="">Tous les secteurs</option>${etabs.map(e => `<option ${state.filters.etab === e.nom ? 'selected' : ''}>${escapeHTML(e.nom)}</option>`).join('')}</select>
         <span class="grow"></span><span class="muted small" id="count"></span>
       </div>
+      <div id="chips" class="filter-chips"></div>
       <div id="list"></div>`;
+    // Puces des filtres actifs : sans elles, un filtre venu d'un clic (KPI, statistiques)
+    // était invisible — la liste paraissait incomplète sans qu'on sache pourquoi.
+    const chips = () => {
+      const f = state.filters, host = box.querySelector('#chips');
+      const items = [];
+      if (f.statut) items.push(['statut', 'Statut : ' + (Array.isArray(f.statut) ? f.statut.join(' ou ') : f.statut)]);
+      if (f.cat) items.push(['cat', 'Catégorie : ' + f.cat]);
+      if (f.etab) items.push(['etab', 'Secteur : ' + f.etab]);
+      if (f.mois) items.push(['mois', 'Mois : ' + moisLabel(f.mois)]);
+      if (f.q) items.push(['q', 'Recherche : « ' + f.q + ' »']);
+      if (!items.length) { host.innerHTML = ''; return; }
+      host.innerHTML = items.map(([k, lab]) =>
+        `<button class="filter-chip" type="button" data-clear="${k}">${escapeHTML(lab)} <span aria-hidden="true">✕</span></button>`).join('')
+        + '<button class="btn btn-ghost btn-sm" type="button" data-clear="all">Tout effacer</button>';
+      host.querySelectorAll('[data-clear]').forEach(b => b.onclick = () => {
+        const k = b.dataset.clear;
+        if (k === 'all') state.filters = Object.assign({}, EMPTY_FILTERS);
+        else state.filters[k] = '';
+        syncControls(); list();
+      });
+    };
+    // Remet les menus déroulants en accord avec state.filters (après effacement d'une puce).
+    const syncControls = () => {
+      const f = state.filters;
+      box.querySelector('#f-q').value = f.q || '';
+      box.querySelector('#f-statut').value = Array.isArray(f.statut) ? '' : (f.statut || '');
+      box.querySelector('#f-cat').value = f.cat || '';
+      box.querySelector('#f-etab').value = f.etab || '';
+    };
     // Rendu de la liste à partir de state.filters (ne touche jamais au DOM des filtres —
     // seuls les listeners ci-dessous mettent à jour state.filters). Nécessaire pour que
     // les filtres multi-statuts venus d'un KPI (ex. tableau de bord) ne soient pas
@@ -458,15 +508,19 @@
       const listHost = box.querySelector('#list'); listHost.innerHTML = '';
       let ds = visibleDemandes(); const f = state.filters;
       if (f.statut) { const wanted = Array.isArray(f.statut) ? f.statut : [f.statut]; ds = ds.filter(d => wanted.includes(d.statut)); }
-      if (f.cat) ds = ds.filter(d => d.categorie === f.cat);
+      if (f.cat) ds = ds.filter(d => f.cat === CAT_NONE ? !d.categorie : d.categorie === f.cat);
+      if (f.etab) ds = ds.filter(d => f.etab === ETAB_NONE ? !d.etablissement : d.etablissement === f.etab);
+      if (f.mois) ds = ds.filter(d => (d.createdAt || '').slice(0, 7) === f.mois);
       if (f.q) { const q = f.q.toLowerCase(); ds = ds.filter(d => (d.texteBrut + ' ' + d.resume + ' ' + d.publicRef).toLowerCase().includes(q)); }
       box.querySelector('#count').textContent = ds.length + ' demande' + (ds.length > 1 ? 's' : '');
+      chips();
       if (!ds.length) { listHost.innerHTML = '<p class="muted">Aucune demande ne correspond.</p>'; return; }
       ds.forEach(d => listHost.appendChild(demItem(d)));
     };
     box.querySelector('#f-q').addEventListener('input', () => { state.filters.q = box.querySelector('#f-q').value; list(); });
     box.querySelector('#f-statut').addEventListener('change', () => { state.filters.statut = box.querySelector('#f-statut').value; list(); });
     box.querySelector('#f-cat').addEventListener('change', () => { state.filters.cat = box.querySelector('#f-cat').value; list(); });
+    box.querySelector('#f-etab').addEventListener('change', () => { state.filters.etab = box.querySelector('#f-etab').value; list(); });
     renderShell(box); list();
   }
   function demItem(d) {
@@ -858,32 +912,55 @@
   /* ======================= STATISTIQUES (§6.2) ======================= */
   function viewStats() {
     const st = data.stats(); const seuil = st.seuil;
+    // Chaque élément cliquable porte le filtre à appliquer ; le câblage se fait en une
+    // passe plus bas. Attribut en guillemets doubles + escapeHTML (qui échappe " ) pour
+    // rester valide même si un nom de secteur contient une apostrophe.
+    const fattr = (o) => `data-filters="${escapeHTML(JSON.stringify(o))}" role="button" tabindex="0"`;
     const bars = (obj) => {
       const max = Math.max(1, ...Object.values(obj));
-      return Object.entries(obj).sort((a, b) => b[1] - a[1]).map(([k, v]) => {
+      const entries = Object.entries(obj).sort((a, b) => b[1] - a[1]);
+      if (!entries.length) return '<p class="muted small">Aucune donnée pour l\'instant.</p>';
+      return entries.map(([k, v]) => {
         const masked = v < seuil;
-        return `<div class="bar-row"><span>${escapeHTML(k)}</span><div class="bar-track"><div class="bar" style="width:${Math.round(v / max * 100)}%"></div></div>
+        return `<div class="bar-row clickable" ${fattr({ mois: k })} title="Voir les demandes de ${escapeHTML(moisLabel(k))}">
+          <span>${escapeHTML(moisLabel(k))}</span><div class="bar-track"><div class="bar" style="width:${Math.round(v / max * 100)}%"></div></div>
           <span>${masked ? '<span class="muted" title="Masqué (< seuil)">•••</span>' : v}</span></div>`;
       }).join('');
     };
     const PIE_COLORS = ['#2f7de1', '#2ec4a6', '#f2b134', '#e0553f', '#7c4ddb', '#0ea5a5', '#f45b8d', '#8b5e34', '#4c6ef5', '#22a06b', '#d97706', '#6d28d9'];
-    const pie = (obj) => {
+    // Camembert en SVG (et non plus en conic-gradient CSS) : chaque part est un <path>
+    // cliquable individuellement, ce qu'un dégradé ne permet pas.
+    const polar = (c, r, deg) => {
+      const rad = (deg - 90) * Math.PI / 180;
+      return [c + r * Math.cos(rad), c + r * Math.sin(rad)];
+    };
+    const arcPath = (c, r, a1, a2) => {
+      if (a2 - a1 >= 359.99) return `M ${c} ${c - r} A ${r} ${r} 0 1 1 ${c - 0.01} ${c - r} Z`; // part unique = disque plein
+      const [x1, y1] = polar(c, r, a1), [x2, y2] = polar(c, r, a2);
+      return `M ${c} ${c} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${a2 - a1 > 180 ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
+    };
+    const pie = (obj, filterKey) => {
       const entries = Object.entries(obj).sort((a, b) => b[1] - a[1]);
+      if (!entries.length) return '<p class="muted small">Aucune donnée pour l\'instant.</p>';
       const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
+      const C = 82, R = 80;
       let acc = 0;
-      const stops = entries.map(([, v], i) => {
-        const start = (acc / total * 100); acc += v;
-        return `${PIE_COLORS[i % PIE_COLORS.length]} ${start.toFixed(2)}% ${(acc / total * 100).toFixed(2)}%`;
-      }).join(', ');
+      const slices = entries.map(([k, v], i) => {
+        const a1 = acc / total * 360; acc += v; const a2 = acc / total * 360;
+        const pct = Math.round(v / total * 100);
+        return `<path class="pie-slice" d="${arcPath(C, R, a1, a2)}" fill="${PIE_COLORS[i % PIE_COLORS.length]}"
+          ${fattr({ [filterKey]: k })} aria-label="${escapeHTML(k)}, voir les demandes"><title>${escapeHTML(k)} — ${pct}%</title></path>`;
+      }).join('');
       const legend = entries.map(([k, v], i) => {
         const masked = v < seuil;
         const pct = Math.round(v / total * 100);
-        return `<div class="pie-legend-row"><span class="pie-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></span>
+        return `<div class="pie-legend-row clickable" ${fattr({ [filterKey]: k })} title="Voir les demandes : ${escapeHTML(k)}">
+          <span class="pie-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></span>
           <span class="pie-label">${escapeHTML(k)}</span>
-          <span class="pie-val">${masked ? '<span class="muted" title="Masqué (< seuil)">•••</span>' : v + ' (' + pct + '%)'}</span></div>`;
+          <span class="pie-val">${masked ? '<span class="muted" title="Masqué (< seuil)">•••</span>' : v + ' (' + pct + '%)'}</span>
+          <span class="go" aria-hidden="true">›</span></div>`;
       }).join('');
-      if (!entries.length) return '<p class="muted small">Aucune donnée pour l\'instant.</p>';
-      return `<div class="pie-wrap"><div class="pie" style="background:conic-gradient(${stops})"></div><div class="pie-legend">${legend}</div></div>`;
+      return `<div class="pie-wrap"><svg class="pie" viewBox="0 0 164 164" role="img" aria-label="Répartition">${slices}</svg><div class="pie-legend">${legend}</div></div>`;
     };
     // Croisement secteur × catégorie : fait ressortir d'un coup d'œil quel secteur
     // remonte le plus tel type de problème. Mêmes règles d'anonymisation que le
@@ -900,15 +977,16 @@
       const cats = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
       const maxCell = Math.max(1, ...etabs.flatMap(e => cats.map(c => byEtabCat[e][c] || 0)));
       const cellBg = (v) => v ? ` style="background:rgba(47,125,225,${(0.1 + 0.7 * (v / maxCell)).toFixed(2)})"` : '';
-      const head = `<tr><th></th>${cats.map(c => `<th>${escapeHTML(c)}</th>`).join('')}<th>Total</th></tr>`;
+      const head = `<tr><th></th>${cats.map(c => `<th class="clickable" ${fattr({ cat: c })} title="Voir toutes les demandes : ${escapeHTML(c)}">${escapeHTML(c)}</th>`).join('')}<th>Total</th></tr>`;
       const rows = etabs.map(e => {
         const rowTotal = cats.reduce((s, c) => s + (byEtabCat[e][c] || 0), 0);
         const cells = cats.map(c => {
           const v = byEtabCat[e][c] || 0;
           const masked = v > 0 && v < seuilVal;
-          return `<td${cellBg(masked ? 0 : v)}>${v === 0 ? '' : (masked ? '<span class="muted" title="Masqué (< seuil)">•••</span>' : v)}</td>`;
+          if (!v) return '<td></td>'; // case vide : rien à ouvrir
+          return `<td class="clickable"${cellBg(masked ? 0 : v)} ${fattr({ etab: e, cat: c })} title="${escapeHTML(e)} · ${escapeHTML(c)} — voir les demandes">${masked ? '<span class="muted" title="Masqué (< seuil)">•••</span>' : v}</td>`;
         }).join('');
-        return `<tr><th>${escapeHTML(e)}</th>${cells}<td class="hm-total">${rowTotal}</td></tr>`;
+        return `<tr><th class="clickable" ${fattr({ etab: e })} title="Voir toutes les demandes du secteur ${escapeHTML(e)}">${escapeHTML(e)}</th>${cells}<td class="hm-total clickable" ${fattr({ etab: e })}>${rowTotal}</td></tr>`;
       }).join('');
       return `<div class="hm-scroll"><table class="heatmap"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
     };
@@ -916,19 +994,26 @@
     box.innerHTML = `
       <h1>Statistiques anonymisées</h1>
       <p class="page-sub">Protection contre la réidentification : les groupes de moins de <strong>${seuil}</strong> demandes sont masqués (seuil paramétrable).</p>
+      <div class="notice notice-info" style="margin-bottom:16px"><span class="ico">👆</span><div>Cliquez sur une part de camembert, une case du tableau ou un mois pour ouvrir les demandes correspondantes.</div></div>
       <div class="kpi-grid">
         ${kpi(st.total, 'Demandes au total', '', 'demandes', {})}
         ${kpi(st.sansReponse, 'Sans réponse', 'warn', 'demandes', {})}
         ${kpi(st.engagementsEchus, 'Engagements échus', 'alert', 'echeances', {})}
       </div>
-      <div class="card card-pad"><h3>Sujets les plus fréquents</h3>${pie(st.byCat)}</div>
-      <div class="card card-pad" style="margin-top:12px"><h3>Répartition par secteur</h3>${pie(st.byEtab)}</div>
+      <div class="card card-pad"><h3>Sujets les plus fréquents</h3>${pie(st.byCat, 'cat')}</div>
+      <div class="card card-pad" style="margin-top:12px"><h3>Répartition par secteur</h3>${pie(st.byEtab, 'etab')}</div>
       <div class="card card-pad" style="margin-top:12px">
         <h3>Comparaison par secteur</h3>
         <p class="hint">Quel secteur remonte le plus tel type de problème — pour prioriser où porter l'effort.</p>
         ${heatmap(st.byEtabCat, seuil)}
       </div>
       <div class="card card-pad" style="margin-top:12px"><h3>Évolution par mois</h3>${bars(st.byMonth)}</div>`;
+    // Câblage unique de tous les éléments cliquables (hors KPI, gérés par wireKPIs).
+    box.querySelectorAll('[data-filters]:not(.kpi)').forEach(n => {
+      const go = () => { try { goToDemandes(JSON.parse(n.dataset.filters)); } catch (e) {} };
+      n.addEventListener('click', go);
+      n.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); go(); } });
+    });
     renderShell(box); wireKPIs();
   }
 

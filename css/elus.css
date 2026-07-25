@@ -132,14 +132,39 @@
 .bar { height: 12px; background: var(--brand-gradient); border-radius: 999px; }
 .bar-track { background: var(--surface-2); border-radius: 999px; }
 
-/* Camembert coloré (sujets / secteurs) */
+/* Camembert coloré (sujets / secteurs) — parts cliquables (SVG) */
 .pie-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-top: 10px; }
-.pie { width: 160px; height: 160px; min-width: 160px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--border); }
-.pie-legend { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
-.pie-legend-row { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+.pie { width: 160px; height: 160px; min-width: 160px; border-radius: 50%; }
+.pie-slice { cursor: pointer; transition: opacity .12s, transform .12s; transform-origin: 50% 50%; outline: none; }
+.pie-slice:hover, .pie-slice:focus-visible { opacity: .82; transform: scale(1.035); }
+.pie-slice:focus-visible { stroke: var(--text); stroke-width: 2; }
+.pie-legend { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 180px; }
+.pie-legend-row { display: flex; align-items: center; gap: 8px; font-size: .85rem; padding: 5px 6px; border-radius: var(--r-sm); }
 .pie-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
 .pie-label { flex: 1; }
 .pie-val { font-weight: 600; }
+.pie-legend-row .go { color: var(--text-mute); font-weight: 700; opacity: 0; transition: opacity .12s; }
+.pie-legend-row.clickable:hover .go, .pie-legend-row.clickable:focus-visible .go { opacity: 1; }
+
+/* Éléments de statistiques cliquables (légendes, cases du tableau croisé, mois) */
+.clickable { cursor: pointer; }
+.pie-legend-row.clickable:hover, .pie-legend-row.clickable:focus-visible,
+.bar-row.clickable:hover, .bar-row.clickable:focus-visible { background: var(--surface-2); outline: none; }
+.bar-row.clickable { padding: 4px 6px; border-radius: var(--r-sm); margin-left: -6px; margin-right: -6px; }
+table.heatmap td.clickable:hover, table.heatmap th.clickable:hover,
+table.heatmap td.clickable:focus-visible, table.heatmap th.clickable:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: -2px;
+}
+
+/* Puces de filtres actifs (liste des demandes) */
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 12px; }
+.filter-chips:empty { display: none; }
+.filter-chip {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: .8rem; font-weight: 600;
+  background: var(--primary-soft); color: var(--primary-dark); border: 0;
+  padding: 5px 10px; border-radius: 999px; cursor: pointer;
+}
+.filter-chip:hover { background: var(--primary); color: #fff; }
 
 /* Comparaison inter-secteurs (heatmap) */
 .hm-scroll { overflow-x: auto; margin-top: 10px; }

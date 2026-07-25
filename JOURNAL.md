@@ -1,5 +1,42 @@
 # Journal — Parole Salariés By Cedmad
 
+## Statistiques cliquables (drill-down vers les demandes) — 2026-07-20
+**Statut : en cours**
+
+Demande utilisateur : rendre les statistiques interactives. Choix retenu
+(parmi 4 propositions) : **cliquer sur un graphique ouvre les demandes
+correspondantes** — passer du chiffre au dossier réel en un clic.
+
+Dans `js/elus.js` :
+- **Camemberts convertis de CSS `conic-gradient` en SVG** : chaque part est
+  désormais un `<path>` cliquable individuellement (impossible avec un
+  dégradé CSS). Les lignes de légende sont également cliquables — meilleure
+  cible au doigt sur mobile — avec un chevron « › » au survol.
+- **Tableau croisé secteur × catégorie** : chaque case ouvre les demandes du
+  couple secteur+catégorie ; l'en-tête de ligne filtre sur le secteur seul,
+  l'en-tête de colonne sur la catégorie seule. Les cases vides ne sont pas
+  cliquables.
+- **Évolution par mois** : chaque barre ouvre les demandes du mois. Les mois
+  s'affichent maintenant en clair (« juillet 2026 ») au lieu de « 2026-07 ».
+- Nouveau helper `goToDemandes(filters)`, qui réutilise le mécanisme déjà
+  en place pour les KPI du tableau de bord.
+
+Deux manques bloquants corrigés au passage dans la liste des demandes :
+- Le filtre **secteur** n'existait pas (`state.filters.etab` était déclaré
+  mais jamais appliqué) — ajouté, avec son menu déroulant. Filtre **mois**
+  ajouté également.
+- Les filtres venus d'un clic étaient **invisibles** : la liste paraissait
+  incomplète sans qu'on sache pourquoi (déjà le cas avant, avec les KPI
+  multi-statuts). Ajout d'une rangée de **puces de filtres actifs**, chacune
+  effaçable individuellement, plus un bouton « Tout effacer ».
+- Les libellés fourre-tout des stats (« Non classé », « — ») sont traduits
+  en « champ vide » par les filtres, au lieu d'être cherchés littéralement.
+
+Note confidentialité : une valeur masquée (< seuil) reste cliquable. Le
+seuil protège contre la réidentification dans les **agrégats** ; il ne
+restreint pas l'accès de l'élu aux dossiers de son périmètre, qu'il peut
+déjà lister et filtrer manuellement dans l'onglet Demandes.
+
 ## Bandeau réunion : précision sur les questions tardives — 2026-07-20
 **Statut : en cours**
 
