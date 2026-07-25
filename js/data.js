@@ -144,7 +144,10 @@
     const ds = snap.demandes, seuil = snap.organisation.seuilAnonymat || 5;
     const byCat = {}, byMonth = {}, byEtab = {}, byEtabCat = {};
     ds.forEach(d => {
-      const cat = d.categorie || 'Non classé', etab = d.etablissement || '—';
+      // Secteur vide = le sujet concerne tout le monde (le salarié ne renseigne rien
+      // dans ce cas), d'où « Tous les secteurs » et non un tiret. Libellé à garder
+      // identique à ETAB_ALL dans js/elus.js, qui s'en sert pour retrouver ces demandes.
+      const cat = d.categorie || 'Non classé', etab = d.etablissement || 'Tous les secteurs';
       byCat[cat] = (byCat[cat] || 0) + 1;
       byMonth[(d.createdAt || '').slice(0, 7)] = (byMonth[(d.createdAt || '').slice(0, 7)] || 0) + 1;
       byEtab[etab] = (byEtab[etab] || 0) + 1;

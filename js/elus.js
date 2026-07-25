@@ -446,10 +446,12 @@
   }
 
   /* ======================= LISTE DEMANDES ======================= */
-  // Valeurs « fourre-tout » des statistiques : une demande sans catégorie est comptée
-  // sous « Non classé », sans secteur sous « — ». Les filtres doivent donc les traduire
-  // en « champ vide » plutôt que de chercher ce libellé tel quel.
-  const CAT_NONE = 'Non classé', ETAB_NONE = '—';
+  // Valeurs « fourre-tout » des statistiques. Une demande sans catégorie est comptée sous
+  // « Non classé ». Un secteur vide ne veut PAS dire « oublié » mais « concerne tout le
+  // monde » : quand le sujet touche tous les secteurs, le salarié ne renseigne rien —
+  // d'où le libellé « Tous les secteurs » (et non un tiret). Doit rester identique à
+  // celui utilisé par data.js/stats(). Les filtres retraduisent ce libellé en champ vide.
+  const CAT_NONE = 'Non classé', ETAB_ALL = 'Tous les secteurs';
   const moisLabel = (m) => {
     const [y, mo] = String(m || '').split('-');
     if (!y || !mo) return m || '';
@@ -466,7 +468,7 @@
         <input id="f-q" type="search" placeholder="Rechercher…" value="${escapeHTML(state.filters.q)}">
         <select id="f-statut"><option value="">Tous les statuts</option>${store.STATUTS.map(s => `<option ${state.filters.statut === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
         <select id="f-cat"><option value="">Toutes catégories</option>${store.CATEGORIES.map(s => `<option ${state.filters.cat === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
-        <select id="f-etab"><option value="">Tous les secteurs</option>${etabs.map(e => `<option ${state.filters.etab === e.nom ? 'selected' : ''}>${escapeHTML(e.nom)}</option>`).join('')}</select>
+        <select id="f-etab"><option value="">Filtrer par secteur…</option>${etabs.map(e => `<option ${state.filters.etab === e.nom ? 'selected' : ''}>${escapeHTML(e.nom)}</option>`).join('')}<option ${state.filters.etab === ETAB_ALL ? 'selected' : ''}>${ETAB_ALL}</option></select>
         <span class="grow"></span><span class="muted small" id="count"></span>
       </div>
       <div id="chips" class="filter-chips"></div>
@@ -509,7 +511,7 @@
       let ds = visibleDemandes(); const f = state.filters;
       if (f.statut) { const wanted = Array.isArray(f.statut) ? f.statut : [f.statut]; ds = ds.filter(d => wanted.includes(d.statut)); }
       if (f.cat) ds = ds.filter(d => f.cat === CAT_NONE ? !d.categorie : d.categorie === f.cat);
-      if (f.etab) ds = ds.filter(d => f.etab === ETAB_NONE ? !d.etablissement : d.etablissement === f.etab);
+      if (f.etab) ds = ds.filter(d => f.etab === ETAB_ALL ? !d.etablissement : d.etablissement === f.etab);
       if (f.mois) ds = ds.filter(d => (d.createdAt || '').slice(0, 7) === f.mois);
       if (f.q) { const q = f.q.toLowerCase(); ds = ds.filter(d => (d.texteBrut + ' ' + d.resume + ' ' + d.publicRef).toLowerCase().includes(q)); }
       box.querySelector('#count').textContent = ds.length + ' demande' + (ds.length > 1 ? 's' : '');
@@ -531,7 +533,7 @@
       <span class="ic">${type.icon || '📄'}</span>
       <div class="body">
         <div class="res">${escapeHTML(d.resume || type.label || 'Demande')}</div>
-        <div class="meta"><span>${escapeHTML(d.publicRef)}</span>·<span>${escapeHTML(d.categorie || 'à classer')}</span>·<span>${escapeHTML(d.etablissement || '—')}</span>
+        <div class="meta"><span>${escapeHTML(d.publicRef)}</span>·<span>${escapeHTML(d.categorie || 'à classer')}</span>·<span>${escapeHTML(d.etablissement || ETAB_ALL)}</span>
           ${badge(conf.label, conf.color)} ${d.groupeId ? badge('regroupée', 'mute') : ''} ${d.iaDoublons && d.iaDoublons.length ? badge('🔗 doublon possible', 'primary') : ''}</div>
       </div>
       <div class="right">${d.priorite === 'Urgente' ? badge('Urgent', 'danger') : ''}
@@ -627,7 +629,7 @@
           <div class="card card-pad">
             <dl class="kv">
               <dt>Confidentialité</dt><dd>${badge(conf.label, conf.color)}</dd>
-              <dt>Secteur</dt><dd>${escapeHTML(d.etablissement || '—')}</dd>
+              <dt>Secteur</dt><dd>${escapeHTML(d.etablissement || ETAB_ALL)}</dd>
               <dt>Zone / poste</dt><dd>${escapeHTML(d.service || '—')}</dd>
               <dt>Instance</dt><dd>${escapeHTML(d.instance)}</dd>
               <dt>Élu affecté</dt><dd>${escapeHTML(d.eluAffecte || '—')}</dd>
@@ -782,7 +784,7 @@
       ? allEtabs.filter(e => (session.perimetre || []).includes(e.id))
       : allEtabs;
     const curEtabId = d.etablissementId || (allEtabs.find(e => e.nom === d.etablissement) || {}).id || '';
-    const etabOptions = `<option value="">— Non renseigné —</option>` +
+    const etabOptions = `<option value="">${ETAB_ALL}</option>` +
       etabChoices.map(e => `<option value="${e.id}" ${e.id === curEtabId ? 'selected' : ''}>${escapeHTML(e.nom)}</option>`).join('');
     return `<div class="card card-pad">
       <h3>Actions (§4.3)</h3>

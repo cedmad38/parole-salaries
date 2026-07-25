@@ -1,5 +1,30 @@
 # Journal — Parole Salariés By Cedmad
 
+## Secteur vide affiché « Tous les secteurs » — 2026-07-20
+**Statut : en cours**
+
+Retour utilisateur : un secteur non renseigné s'affichait par un simple tiret
+« — », comme s'il s'agissait d'un oubli. Or c'est l'inverse : **quand le sujet
+concerne tous les secteurs, le salarié ne renseigne rien**. Le tiret disait donc
+le contraire du sens réel.
+
+Remplacé partout par **« Tous les secteurs »** (constante `ETAB_ALL` dans
+`js/elus.js`, libellé repris à l'identique dans `js/data.js`/`stats()` car il
+sert aussi de clé de regroupement) : liste des demandes, fiche, camembert
+« Répartition par secteur », tableau croisé, et menu « Secteur » de la fiche
+(qui affichait « — Non renseigné — »).
+
+Ce comportement était déjà cohérent côté droits d'accès : `canSeeDemande()`
+rend depuis toujours une demande sans secteur visible par **tous** les élus,
+quel que soit leur périmètre — ce qui confirme la lecture « concerne tout le
+monde ».
+
+Effet de bord traité : le menu de filtre des demandes utilisait déjà
+« Tous les secteurs » comme option neutre (= ne pas filtrer), ce qui serait
+entré en collision avec le nouveau libellé. L'option neutre devient
+« Filtrer par secteur… », et « Tous les secteurs » est désormais une vraie
+valeur sélectionnable — on peut donc isoler les sujets transverses.
+
 ## Statistiques cliquables (drill-down vers les demandes) — 2026-07-20
 **Statut : en cours**
 
