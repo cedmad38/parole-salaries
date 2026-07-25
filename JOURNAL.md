@@ -1,5 +1,41 @@
 # Journal — Parole Salariés By Cedmad
 
+## Secteur obligatoire côté salarié + « Tous les secteurs » — 2026-07-25
+**Statut : en cours**
+
+Demande utilisateur : forcer le choix d'un secteur au dépôt, avec une option
+« Tous les secteurs », pour qu'il n'apparaisse plus jamais vide.
+
+Dans `js/salarie.js`, sur les **deux** parcours (« Question rapide » ET
+« Poser une question », où le secteur était marqué *facultatif*) :
+- Nouvelle option **« Tous les secteurs »**, enregistrée comme un secteur
+  **vide** en base — c'est justement ce qui rend la demande visible par TOUS
+  les élus quel que soit leur périmètre (`canSeeDemande`). Mettre le libellé
+  en dur aurait au contraire rendu la demande invisible aux gestionnaires,
+  puisqu'il ne correspond à aucun établissement réel.
+- Le champ devient **obligatoire** : message d'erreur + focus sur le menu si
+  rien n'est choisi.
+- `draft.secteurChoix` conserve le choix brut, pour réafficher « Tous les
+  secteurs » si le salarié revient en arrière (sans lui, le champ serait
+  retombé sur « — Choisir un secteur — » puisque la valeur stockée est vide).
+- Le récapitulatif avant envoi masquait la ligne « Secteur » quand elle était
+  vide ; elle s'affiche désormais toujours, avec « Tous les secteurs ».
+
+## Correction : le bouton d'installation ne disparaissait jamais — 2026-07-25
+**Statut : en cours**
+
+Retour utilisateur (capture) : l'invite restait affichée **dans l'application
+déjà installée**, et cliquer la croix ✕ ne faisait rien.
+
+Vraie cause, antérieure au correctif précédent : la règle
+`.pwa-install-btn { display: inline-flex }` **écrase l'attribut HTML `hidden`**
+— une règle d'auteur l'emporte toujours sur la feuille du navigateur
+(`[hidden] { display: none }`). Vérifié en direct : `hidden = true` mais
+`display` calculé = `flex`. Autrement dit `installBtn.hidden = true` n'avait
+**aucun effet visuel**, nulle part : ni en mode application, ni après
+installation, ni au clic sur la croix — le choix était bien enregistré, mais
+rien ne disparaissait. Corrigé par `.pwa-install-btn[hidden] { display: none; }`.
+
 ## « Installer l'application » réapparaissait sans fin — 2026-07-20
 **Statut : en cours**
 

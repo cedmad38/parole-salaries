@@ -14,8 +14,20 @@
   let draft = newDraft();
   function newDraft() {
     return { typeId: '', texteBrut: '', reponses: {}, confidentialite: '', nom: '', contact: '',
-             etablissement: '', service: '', pieces: [], resume: '', categorie: '', consentBrouillon: false, consents: {} };
+             etablissement: '', secteurChoix: '', service: '', pieces: [], resume: '', categorie: '', consentBrouillon: false, consents: {} };
   }
+
+  /* ---------- Secteur (obligatoire) ----------
+     Le champ ne doit jamais rester vide : un secteur non renseigné était auparavant
+     ambigu (oubli ? sujet transverse ?). « Tous les secteurs » devient donc une réponse
+     à part entière, que l'on ENREGISTRE comme un secteur vide — c'est précisément ce qui
+     rend la demande visible par TOUS les élus quel que soit leur périmètre (canSeeDemande).
+     `secteurChoix` garde le choix brut pour réafficher le bon élément en cas de retour. */
+  const SECTEUR_ALL = '__tous__';
+  const secteurOptions = (sel) => `<option value="">— Choisir un secteur —</option>`
+    + (window.PS.config.secteurs || []).map(s => `<option ${sel === s ? 'selected' : ''}>${escapeHTML(s)}</option>`).join('')
+    + `<option value="${SECTEUR_ALL}" ${sel === SECTEUR_ALL ? 'selected' : ''}>Tous les secteurs</option>`;
+  const secteurValue = (raw) => (raw === SECTEUR_ALL ? '' : raw);
 
   /* ---------- Barre de progression ---------- */
   function progress(step) {
@@ -83,10 +95,8 @@
       </div>
       <div class="field">
         <label for="rq-secteur">Votre secteur</label>
-        <select id="rq-secteur">
-          <option value="">— Choisir un secteur —</option>
-          ${(window.PS.config.secteurs || []).map(s => `<option>${escapeHTML(s)}</option>`).join('')}
-        </select>
+        <select id="rq-secteur">${secteurOptions(draft.secteurChoix)}</select>
+        <div class="hint">Si votre question concerne tout le monde, choisissez « Tous les secteurs ».</div>
       </div>
       <div class="form-actions">
         <button class="btn btn-ghost" type="button" id="back">Retour</button>
@@ -95,8 +105,10 @@
     box.querySelector('#back').onclick = () => go('accueil');
     box.querySelector('#send').onclick = async () => {
       const txt = box.querySelector('#rq-txt').value.trim();
-      const secteur = box.querySelector('#rq-secteur').value;
+      const secteurBrut = box.querySelector('#rq-secteur').value;
+      const secteur = secteurValue(secteurBrut);
       if (txt.length < 12) { toast('Merci de décrire un peu plus votre question.', 'err'); return; }
+      if (!secteurBrut) { toast('Merci d\'indiquer votre secteur (ou « Tous les secteurs »).', 'err'); box.querySelector('#rq-secteur').focus(); return; }
       const btn = box.querySelector('#send'); btn.disabled = true; btn.textContent = 'Envoi…';
       try {
         const resume = assistant.summarize(txt, {});
@@ -149,14 +161,12 @@
       </div>
 
       <div class="field">
-        <label for="etab">Secteur (facultatif)</label>
+        <label for="etab">Secteur</label>
         <div class="row">
-          <select class="grow" id="etab" style="min-width:140px">
-            <option value="">— Choisir un secteur —</option>
-            ${(window.PS.config.secteurs || []).map(s => `<option ${draft.etablissement === s ? 'selected' : ''}>${escapeHTML(s)}</option>`).join('')}
-          </select>
+          <select class="grow" id="etab" style="min-width:140px">${secteurOptions(draft.secteurChoix)}</select>
           <input class="grow" id="serv" type="text" placeholder="Zone / poste (facultatif)" value="${escapeHTML(draft.service)}" style="min-width:140px">
         </div>
+        <div class="hint">Si votre demande concerne tout le monde, choisissez « Tous les secteurs ».</div>
       </div>
 
       <div class="field">
@@ -191,10 +201,12 @@
     box.querySelector('#back').onclick = () => go(draft.typeId && !['danger', 'amelioration', 'rdv'].includes(draft.typeId) ? 'type' : 'accueil');
     box.querySelector('#next').onclick = () => {
       draft.texteBrut = box.querySelector('#txt').value.trim();
-      draft.etablissement = box.querySelector('#etab').value.trim();
+      draft.secteurChoix = box.querySelector('#etab').value;
+      draft.etablissement = secteurValue(draft.secteurChoix);
       draft.service = box.querySelector('#serv').value.trim();
       draft.consentBrouillon = box.querySelector('#consent-draft').checked;
       if (draft.texteBrut.length < 12) { toast('Merci de décrire un peu plus la situation.', 'err'); return; }
+      if (!draft.secteurChoix) { toast('Merci d\'indiquer votre secteur (ou « Tous les secteurs »).', 'err'); box.querySelector('#etab').focus(); return; }
       if (draft.consentBrouillon) saveBrouillon();
       go('assistant');
     };
@@ -304,7 +316,7 @@
           <dt>Résumé de votre demande</dt><dd>${escapeHTML(draft.resume || '—')}</dd>
           <dt>Type & catégorie suggérée</dt><dd>${escapeHTML(type.label || '')} · ${escapeHTML(draft.categorie || 'à classer par les élus')}</dd>
           <dt>Niveau de confidentialité</dt><dd><span class="badge badge-${conf.color}">${escapeHTML(conf.label)}</span></dd>
-          ${draft.etablissement ? `<dt>Secteur</dt><dd>${escapeHTML(draft.etablissement)}${draft.service ? ' — ' + escapeHTML(draft.service) : ''}</dd>` : ''}
+          <dt>Secteur</dt><dd>${escapeHTML(draft.etablissement || 'Tous les secteurs')}${draft.service ? ' — ' + escapeHTML(draft.service) : ''}</dd>
           ${draft.pieces.length ? `<dt>Pièces jointes</dt><dd>${draft.pieces.map(p => escapeHTML(p.nom)).join(', ')}</dd>` : ''}
           <dt>Votre texte original (conservé tel quel)</dt><dd><blockquote>${escapeHTML(draft.texteBrut)}</blockquote></dd>
         </dl>

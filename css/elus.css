@@ -186,6 +186,13 @@ table.heatmap td.hm-total { font-weight: 700; background: var(--surface-2); }
   background: linear-gradient(120deg, #2ec4a6, #2f7de1, #7c4ddb);
   box-shadow: 0 8px 24px rgba(16,33,58,.28); cursor: pointer;
 }
+/* `display` ci-dessus écrase l'attribut HTML `hidden` (une règle d'auteur l'emporte
+   toujours sur la feuille du navigateur `[hidden]{display:none}`). Sans cette règle,
+   `installBtn.hidden = true` n'avait AUCUN effet visuel : le bouton restait affiché
+   en permanence, y compris dans l'application déjà installée et après avoir cliqué
+   la croix — le choix était bien enregistré, mais rien ne disparaissait à l'écran. */
+.pwa-install-btn[hidden] { display: none; }
+
 /* Croix « ne plus proposer » — l'invite d'installation réapparaissait sinon à chaque
    ouverture dans un onglet normal, même une fois l'application installée. */
 .pwa-install-close {
