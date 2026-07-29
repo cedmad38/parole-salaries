@@ -17,7 +17,7 @@
   // À suivre / Réponse insuffisante / À représenter restent des dossiers actifs.
   const OUTCOME_STATUTS = ['Résolue', 'À suivre', 'Réponse insuffisante', 'Laissée de côté', 'À représenter'];
   const CLOSED_STATUTS = ['Résolue', 'Laissée de côté'];
-  const EMPTY_FILTERS = { statut: '', cat: '', etab: '', mois: '', q: '', apublier: false };
+  const EMPTY_FILTERS = { statut: '', cat: '', etab: '', mois: '', q: '', apublier: false, sansReponse: false };
   let state = { view: 'dashboard', currentId: null, filters: Object.assign({}, EMPTY_FILTERS) };
   const SESSION_KEY = 'ps_session';
 
@@ -485,6 +485,7 @@
       if (f.etab) items.push(['etab', 'Secteur : ' + f.etab]);
       if (f.mois) items.push(['mois', 'Mois : ' + moisLabel(f.mois)]);
       if (f.apublier) items.push(['apublier', 'Réponses à publier']);
+      if (f.sansReponse) items.push(['sansReponse', 'Sans réponse (Nouvelle / Soumise)']);
       if (f.q) items.push(['q', 'Recherche : « ' + f.q + ' »']);
       if (!items.length) { host.innerHTML = ''; return; }
       host.innerHTML = items.map(([k, lab]) =>
@@ -519,6 +520,9 @@
       // Reproduit exactement la règle du KPI « Réponses à publier » (counts().apublier) —
       // sinon le nombre affiché et la liste obtenue en cliquant dessus ne correspondent pas.
       if (f.apublier) ds = ds.filter(d => OUTCOME_STATUTS.includes(d.statut) && d.statut !== 'À représenter' && !d.reponsePubliee && !d.saisieElu);
+      // Reproduit exactement la règle de stats().sansReponse (js/data.js) — aucune décision
+      // prise, le dossier est encore Nouvelle ou Soumise.
+      if (f.sansReponse) ds = ds.filter(d => !OUTCOME_STATUTS.includes(d.statut));
       if (f.q) { const q = f.q.toLowerCase(); ds = ds.filter(d => (d.texteBrut + ' ' + d.resume + ' ' + d.publicRef).toLowerCase().includes(q)); }
       box.querySelector('#count').textContent = ds.length + ' demande' + (ds.length > 1 ? 's' : '');
       chips();
@@ -1013,7 +1017,7 @@
       <div class="notice notice-info" style="margin-bottom:16px"><span class="ico">👆</span><div>Cliquez sur une part de camembert, une case du tableau ou un mois pour ouvrir les demandes correspondantes.</div></div>
       <div class="kpi-grid">
         ${kpi(st.total, 'Demandes au total', '', 'demandes', {})}
-        ${kpi(st.sansReponse, 'Sans réponse', 'warn', 'demandes', {})}
+        ${kpi(st.sansReponse, 'Sans réponse', 'warn', 'demandes', { sansReponse: true })}
         ${kpi(st.engagementsEchus, 'Engagements échus', 'alert', 'echeances', {})}
       </div>
       <div class="card card-pad"><h3>Sujets les plus fréquents</h3>${pie(st.byCat, 'cat')}</div>

@@ -1,5 +1,18 @@
 # Journal — Parole Salariés By Cedmad
 
+## Clic sur « Sans réponse » (Statistiques) : n'était pas filtré du tout — 2026-07-25
+**Statut : en cours**
+
+Retour utilisateur : le KPI « Sans réponse » (page Statistiques) affichait 1,
+mais impossible de savoir laquelle. Cause plus grave que pour « Réponses à
+publier » : `kpi(st.sansReponse, 'Sans réponse', 'warn', 'demandes', {})` —
+le filtre passé était un objet **vide**. Le clic ouvrait la liste complète
+des 21 demandes, sans aucun filtre.
+
+Même correctif que pour « Réponses à publier » : nouveau filtre `sansReponse`
+dans `js/elus.js`, qui reproduit exactement la règle de `stats().sansReponse`
+(`js/data.js`) — statut encore `Nouvelle` ou `Soumise`, aucune décision prise.
+
 ## Clic sur « Réponses à publier » : liste enfin cohérente avec le chiffre — 2026-07-25
 **Statut : en cours**
 
