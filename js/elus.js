@@ -17,7 +17,7 @@
   // À suivre / Réponse insuffisante / À représenter restent des dossiers actifs.
   const OUTCOME_STATUTS = ['Résolue', 'À suivre', 'Réponse insuffisante', 'Laissée de côté', 'À représenter'];
   const CLOSED_STATUTS = ['Résolue', 'Laissée de côté'];
-  const EMPTY_FILTERS = { statut: '', cat: '', etab: '', mois: '', q: '' };
+  const EMPTY_FILTERS = { statut: '', cat: '', etab: '', mois: '', q: '', apublier: false };
   let state = { view: 'dashboard', currentId: null, filters: Object.assign({}, EMPTY_FILTERS) };
   const SESSION_KEY = 'ps_session';
 
@@ -326,7 +326,7 @@
         ${kpi(c.nouvelles, 'Nouvelles demandes', 'primary', 'demandes', { statut: 'Nouvelle' })}
         ${kpi(c.urgentes, 'Urgentes', 'alert', 'demandes', { statut: '' })}
         ${kpi(c.attente, 'Soumises, en attente de réponse', '', 'demandes', { statut: ['Soumise', 'Réponse insuffisante'] })}
-        ${kpi(c.apublier, 'Réponses à publier', 'ok', 'demandes', { statut: OUTCOME_STATUTS.filter(s => s !== 'À représenter') })}
+        ${kpi(c.apublier, 'Réponses à publier', 'ok', 'demandes', { apublier: true })}
       </div>
       <div class="card card-pad" style="margin-bottom:14px">
         <h3>⚠️ Alertes — sujets récurrents (§6.2)</h3>
@@ -484,6 +484,7 @@
       if (f.cat) items.push(['cat', 'Catégorie : ' + f.cat]);
       if (f.etab) items.push(['etab', 'Secteur : ' + f.etab]);
       if (f.mois) items.push(['mois', 'Mois : ' + moisLabel(f.mois)]);
+      if (f.apublier) items.push(['apublier', 'Réponses à publier']);
       if (f.q) items.push(['q', 'Recherche : « ' + f.q + ' »']);
       if (!items.length) { host.innerHTML = ''; return; }
       host.innerHTML = items.map(([k, lab]) =>
@@ -515,6 +516,9 @@
       if (f.cat) ds = ds.filter(d => f.cat === CAT_NONE ? !d.categorie : d.categorie === f.cat);
       if (f.etab) ds = ds.filter(d => f.etab === ETAB_ALL ? !d.etablissement : d.etablissement === f.etab);
       if (f.mois) ds = ds.filter(d => (d.createdAt || '').slice(0, 7) === f.mois);
+      // Reproduit exactement la règle du KPI « Réponses à publier » (counts().apublier) —
+      // sinon le nombre affiché et la liste obtenue en cliquant dessus ne correspondent pas.
+      if (f.apublier) ds = ds.filter(d => OUTCOME_STATUTS.includes(d.statut) && d.statut !== 'À représenter' && !d.reponsePubliee && !d.saisieElu);
       if (f.q) { const q = f.q.toLowerCase(); ds = ds.filter(d => (d.texteBrut + ' ' + d.resume + ' ' + d.publicRef).toLowerCase().includes(q)); }
       box.querySelector('#count').textContent = ds.length + ' demande' + (ds.length > 1 ? 's' : '');
       chips();

@@ -1,5 +1,19 @@
 # Journal — Parole Salariés By Cedmad
 
+## Clic sur « Réponses à publier » : liste enfin cohérente avec le chiffre — 2026-07-25
+**Statut : en cours**
+
+Retour utilisateur : cliquer le KPI « Réponses à publier » du tableau de bord
+montrait toutes les demandes Résolue/À suivre/Réponse insuffisante/Laissée de
+côté, pas seulement celles réellement sans réponse publiée — le chiffre du
+KPI et la liste obtenue en cliquant dessus ne correspondaient pas.
+
+Cause : le clic ne filtrait que par statut, sans reprendre les deux autres
+conditions du compteur (`!d.reponsePubliee` et `!d.saisieElu`, ajouté juste
+avant). Nouveau filtre dédié `apublier` dans `js/elus.js`, qui reproduit
+exactement la règle de `counts().apublier` — chiffre affiché et liste obtenue
+au clic sont désormais garantis identiques.
+
 ## « Saisie élu » : exclure du compteur « Réponses à publier » — 2026-07-25
 **Statut : en cours**
 
