@@ -154,6 +154,7 @@
       statut: 'Nouvelle',
       reponses: input.reponses || {},  // réponses aux questions de l'assistant
       eluAffecte: null,
+      saisieElu: false,
       notesInternes: '',
       reponsePubliee: '',
       motifCloture: '',

@@ -1,5 +1,27 @@
 # Journal — Parole Salariés By Cedmad
 
+## « Saisie élu » : exclure du compteur « Réponses à publier » — 2026-07-25
+**Statut : en cours**
+
+Retour utilisateur : le KPI « Réponses à publier » donnait l'impression de ne
+pas faire son travail alors que beaucoup de demandes sont en réalité saisies
+par un élu qui retranscrit la question d'un salarié (pas de code de suivi
+utilisable côté salarié dans ce cas) — publier une réponse dans l'app n'a
+alors aucun sens, personne n'ira la consulter.
+
+Ajouté une case à cocher **« Formulaire rempli par un élu »** sur la fiche
+demande (`js/elus.js`, nouveau champ `saisieElu` / `saisie_elu` en base) :
+- Exclut la demande du KPI « Réponses à publier » (`counts().apublier`).
+- Badge « ✍️ saisie élu » visible dans la liste des demandes et sur la fiche.
+- Message explicatif sous le champ « Publier une réponse » quand c'est coché.
+- Décochée par défaut — l'élu doit cocher explicitement, jamais de suppression
+  silencieuse d'une demande qui aurait un vrai suivi.
+
+Colonne `saisie_elu boolean not null default false` ajoutée en direct sur
+Supabase. Aucune donnée existante à reclasser : le champ démarre à `false`
+pour les 21 demandes déjà en base — à cocher au cas par cas par l'utilisateur
+sur celles qu'il sait avoir lui-même saisies.
+
 ## Refonte des statuts : 12 → 7, cycle de vie simplifié — 2026-07-25
 **Statut : en cours**
 

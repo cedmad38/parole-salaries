@@ -225,7 +225,9 @@
       urgentes: ds.filter(d => d.priorite === 'Urgente' && !CLOSED_STATUTS.includes(d.statut)).length,
       // Une réponse insuffisante remet le dossier « en attente » d'une vraie réponse.
       attente: ds.filter(d => ['Soumise', 'Réponse insuffisante'].includes(d.statut)).length,
-      apublier: ds.filter(d => OUTCOME_STATUTS.includes(d.statut) && d.statut !== 'À représenter' && !d.reponsePubliee).length,
+      // Une demande saisie par un élu (pas par le salarié via le QR code/lien) n'a pas de
+      // suivi consultable côté salarié — pas de réponse à publier pour ce cas.
+      apublier: ds.filter(d => OUTCOME_STATUTS.includes(d.statut) && d.statut !== 'À représenter' && !d.reponsePubliee && !d.saisieElu).length,
     };
   }
   function renderShell(contentNode) {
@@ -534,7 +536,7 @@
       <div class="body">
         <div class="res">${escapeHTML(d.resume || type.label || 'Demande')}</div>
         <div class="meta"><span>${escapeHTML(d.publicRef)}</span>·<span>${escapeHTML(d.categorie || 'à classer')}</span>·<span>${escapeHTML(d.etablissement || ETAB_ALL)}</span>
-          ${badge(conf.label, conf.color)} ${d.groupeId ? badge('regroupée', 'mute') : ''} ${d.iaDoublons && d.iaDoublons.length ? badge('🔗 doublon possible', 'primary') : ''}</div>
+          ${badge(conf.label, conf.color)} ${d.groupeId ? badge('regroupée', 'mute') : ''} ${d.iaDoublons && d.iaDoublons.length ? badge('🔗 doublon possible', 'primary') : ''} ${d.saisieElu ? badge('✍️ saisie élu', 'mute') : ''}</div>
       </div>
       <div class="right">${d.priorite === 'Urgente' ? badge('Urgent', 'danger') : ''}
         <div style="margin-top:4px">${badge(d.statut, store.STATUT_COLOR[d.statut] || 'mute')}</div></div>`;
@@ -569,7 +571,7 @@
       <button class="btn btn-ghost btn-sm" id="back" type="button">← Retour aux demandes</button>
       <div class="row-between" style="margin:12px 0 4px">
         <h1 style="margin:0">${escapeHTML(d.resume || type.label)}</h1>
-        <span>${d.priorite === 'Urgente' ? badge('Urgent', 'danger') : ''} ${badge(d.statut, store.STATUT_COLOR[d.statut] || 'mute')}</span>
+        <span>${d.priorite === 'Urgente' ? badge('Urgent', 'danger') : ''} ${d.saisieElu ? badge('✍️ Saisie élu', 'mute') : ''} ${badge(d.statut, store.STATUT_COLOR[d.statut] || 'mute')}</span>
       </div>
       <p class="page-sub">${escapeHTML(d.publicRef)} · ${escapeHTML(type.label || '')} · déposée le ${fmtDate(d.createdAt)}</p>
       <div class="status-flow" style="margin-bottom:18px">${statusFlow(d.statut)}</div>
@@ -802,6 +804,10 @@
       <div class="field"><label>Priorité</label><select id="a-prio">${opts(store.PRIORITES, d.priorite)}</select></div>
       <div class="field"><label>Secteur</label><select id="a-etab">${etabOptions}</select></div>
       <div class="field"><label>Affecter à un élu</label><input id="a-elu" type="text" placeholder="Nom de l'élu" value="${escapeHTML(d.eluAffecte || '')}"></div>
+      <label class="small" style="display:flex;gap:8px;align-items:flex-start;font-weight:400;margin-bottom:10px">
+        <input type="checkbox" id="a-saisie-elu" ${d.saisieElu ? 'checked' : ''} style="width:auto;margin-top:3px">
+        Formulaire rempli par un élu, pas par le salarié via le QR code / lien — pas de suivi possible, ne compte pas dans « Réponses à publier ».
+      </label>
       <button class="btn btn-primary btn-sm btn-block" id="a-save" type="button">Enregistrer</button>
       <hr class="divider">
       <div class="field"><label>Notes internes</label><textarea id="a-notes" placeholder="Invisibles au salarié" style="min-height:60px">${escapeHTML(d.notesInternes || '')}</textarea></div>
@@ -811,6 +817,7 @@
       <button class="btn btn-ghost btn-sm btn-block" id="a-rep-save" type="button">Enregistrer la réponse</button>
       <hr class="divider">
       <div class="field"><label>Publier une réponse (anonymisée) au salarié</label><textarea id="a-pub" placeholder="Réponse visible dans le suivi du salarié" style="min-height:60px">${escapeHTML(d.reponsePubliee || '')}</textarea></div>
+      ${d.saisieElu ? '<p class="hint">Non nécessaire : formulaire rempli par un élu, le salarié n\'a pas de suivi à consulter.</p>' : ''}
       <button class="btn btn-primary btn-sm btn-block" id="a-pub-save" type="button">Publier la réponse</button>
       <hr class="divider">
       <div class="field"><label>Action de suivi</label>
@@ -834,7 +841,7 @@
       try {
         await data.updateDemande(d.id, { statut: q('#a-statut').value, categorie: q('#a-cat').value, priorite: q('#a-prio').value,
           etablissementId: etabId, etablissement: etabNom,
-          eluAffecte: q('#a-elu').value.trim() || null }, session.nom);
+          eluAffecte: q('#a-elu').value.trim() || null, saisieElu: q('#a-saisie-elu').checked }, session.nom);
         await reload(); toast('Modifications enregistrées.'); render();
       } catch (e) {
         toast('Enregistrement impossible' + (e && e.message ? ' : ' + e.message : '') + '.', 'err');

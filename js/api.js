@@ -126,6 +126,7 @@
     motifCloture: r.motif_cloture, groupeId: r.groupe_id, createdAt: r.created_at, updatedAt: r.updated_at,
     iaFormulations: r.ia_formulations || null, iaConfiance: r.ia_categorie_confiance || null, iaTraiteAt: r.ia_traite_at || null,
     iaDoublons: r.ia_doublons || null, eluFormulation: r.elu_formulation || '',
+    saisieElu: !!r.saisie_elu,
   });
 
   async function getEtabMap() {
@@ -148,7 +149,7 @@
   }
   async function updateDemande(id, patch) {
     const map = { statut: 'statut', categorie: 'categorie', priorite: 'priorite', eluAffecte: 'elu_affecte',
-      etablissementId: 'etablissement_id', eluFormulation: 'elu_formulation',
+      etablissementId: 'etablissement_id', eluFormulation: 'elu_formulation', saisieElu: 'saisie_elu',
       notesInternes: 'notes_internes', reponsePubliee: 'reponse_publiee', motifCloture: 'motif_cloture', groupeId: 'groupe_id' };
     const row = {}; for (const k in map) if (k in patch) row[map[k]] = patch[k];
     const { error } = await db().from('demandes').update(row).eq('id', id);
