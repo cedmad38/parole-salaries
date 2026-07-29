@@ -155,7 +155,10 @@
       byEtabCat[etab][cat] = (byEtabCat[etab][cat] || 0) + 1;
     });
     const today = new Date().toISOString().slice(0, 10);
-    const sansReponse = ds.filter(d => !['Résolue', 'Clôturée', 'Archivée', 'Réponse reçue'].includes(d.statut)).length;
+    // « Sans réponse » = aucune décision prise (Nouvelle/Soumise) — les 5 issues possibles
+    // (Résolue/À suivre/Réponse insuffisante/Laissée de côté/À représenter) signifient
+    // toutes qu'une réponse a déjà été traitée, même si le dossier n'est pas clos.
+    const sansReponse = ds.filter(d => !['Résolue', 'À suivre', 'Réponse insuffisante', 'Laissée de côté', 'À représenter'].includes(d.statut)).length;
     let engagementsEchus = 0;
     Object.values(snap._acts).forEach(list => list.forEach(a => { if (a.echeance && a.echeance < today && a.etat !== 'Fait') engagementsEchus++; }));
     return { total: ds.length, byCat, byMonth, byEtab, byEtabCat, sansReponse, engagementsEchus, seuil };

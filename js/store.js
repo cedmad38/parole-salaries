@@ -48,16 +48,18 @@
   ];
 
   // Statuts de traitement (§7.1) — ordre du workflow
+  // Cycle de vie volontairement réduit à une phrase : on reçoit la question, on la
+  // soumet en réunion CSE/CSSCT, puis UNE SEULE décision — jamais plusieurs statuts
+  // de fin qui se ressemblent (l'ancien système avait Résolue/Clôturée/Archivée à la
+  // fois, ce qui rendait le choix flou). Voir OUTCOME_STATUTS dans js/elus.js.
   const STATUTS = [
-    'Nouvelle', 'À compléter', 'En analyse', 'Affectée', 'Prête pour réunion',
-    'Transmise à la direction', 'Réponse reçue', 'Réponse insuffisante',
-    'Action à suivre', 'Résolue', 'Clôturée', 'Archivée',
+    'Nouvelle', 'Soumise',
+    'Résolue', 'À suivre', 'Réponse insuffisante', 'Laissée de côté', 'À représenter',
   ];
   const STATUT_COLOR = {
-    'Nouvelle': 'primary', 'À compléter': 'warn', 'En analyse': 'mute',
-    'Affectée': 'mute', 'Prête pour réunion': 'primary', 'Transmise à la direction': 'mute',
-    'Réponse reçue': 'success', 'Réponse insuffisante': 'danger', 'Action à suivre': 'warn',
-    'Résolue': 'success', 'Clôturée': 'mute', 'Archivée': 'mute',
+    'Nouvelle': 'primary', 'Soumise': 'mute',
+    'Résolue': 'success', 'À suivre': 'warn', 'Réponse insuffisante': 'danger',
+    'Laissée de côté': 'mute', 'À représenter': 'primary',
   };
 
   const PRIORITES = ['Normale', 'Élevée', 'Urgente'];
@@ -290,10 +292,15 @@
   }
 
   /* ---------------- Réponses direction & actions de suivi ------------- */
+  // Enregistre la réponse de la direction SANS changer le statut : la décision qui suit
+  // (Résolue / À suivre / Réponse insuffisante / …) doit être un choix explicite de l'élu
+  // dans le menu Statut, jamais un changement automatique et silencieux.
   function addReponseDirection(demandeId, texte, actor) {
     const db = get();
     db.reponses.push({ id: uid('rep'), demandeId, texte, date: now(), auteur: 'Direction (déclaré)', qualite: null });
-    updateDemande(demandeId, { statut: 'Réponse reçue' }, actor);
+    const d = db.demandes.find(x => x.id === demandeId);
+    if (d) d.updatedAt = now();
+    save(db);
     return db.reponses;
   }
   function addAction(demandeId, action, actor) {
@@ -356,7 +363,7 @@
       byMonth[m] = (byMonth[m] || 0) + 1;
       byEtab[d.etablissement || '—'] = (byEtab[d.etablissement || '—'] || 0) + 1;
     });
-    const sansReponse = ds.filter(d => !['Résolue', 'Clôturée', 'Archivée', 'Réponse reçue'].includes(d.statut)).length;
+    const sansReponse = ds.filter(d => !['Résolue', 'À suivre', 'Réponse insuffisante', 'Laissée de côté', 'À représenter'].includes(d.statut)).length;
     const engagementsEchus = db.actions.filter(a => a.echeance && a.echeance < now().slice(0, 10) && a.etat !== 'Fait').length;
     return { total: ds.length, byCat, byMonth, byEtab, sansReponse, engagementsEchus, seuil };
   }
@@ -403,13 +410,13 @@
 
     // Quelques demandes de démonstration (dont un doublon collectif planning §17)
     const demos = [
-      { typeId: 'question_cse', texteBrut: "Ma prime d'ancienneté n'a pas été versée ce mois-ci alors qu'elle figurait sur mon contrat. Personne ne sait m'expliquer pourquoi.", confidentialite: 'confidentiel_elus', etablissement: 'Siège administratif', service: 'Comptabilité', categorie: 'Rémunération', nom: 'Julie Martin', contact: 'julie.m@demo.fr', resume: "Prime d'ancienneté contractuelle non versée, sans explication.", statut: 'En analyse' },
-      { typeId: 'danger', texteBrut: "Un chariot élévateur roule beaucoup trop vite dans l'allée centrale près du quai 3. Un collègue a failli être renversé hier.", confidentialite: 'anonyme_total', etablissement: 'Site Logistique Nord', service: 'Quai', categorie: 'Risque sécurité', resume: "Chariot en excès de vitesse, presque-accident au quai 3.", statut: 'À compléter' },
+      { typeId: 'question_cse', texteBrut: "Ma prime d'ancienneté n'a pas été versée ce mois-ci alors qu'elle figurait sur mon contrat. Personne ne sait m'expliquer pourquoi.", confidentialite: 'confidentiel_elus', etablissement: 'Siège administratif', service: 'Comptabilité', categorie: 'Rémunération', nom: 'Julie Martin', contact: 'julie.m@demo.fr', resume: "Prime d'ancienneté contractuelle non versée, sans explication.", statut: 'Soumise' },
+      { typeId: 'danger', texteBrut: "Un chariot élévateur roule beaucoup trop vite dans l'allée centrale près du quai 3. Un collègue a failli être renversé hier.", confidentialite: 'anonyme_total', etablissement: 'Site Logistique Nord', service: 'Quai', categorie: 'Risque sécurité', resume: "Chariot en excès de vitesse, presque-accident au quai 3.", statut: 'Nouvelle' },
       { typeId: 'probleme_collectif', texteBrut: "Mon chef change encore mes horaires au dernier moment et je ne peux jamais m'organiser.", confidentialite: 'confidentiel_elus', etablissement: 'Site Logistique Nord', service: 'Préparation', categorie: 'Temps de travail', nom: 'Karim B.', contact: '06 xx', resume: "Modifications répétées et tardives des horaires.", statut: 'Nouvelle' },
       { typeId: 'probleme_collectif', texteBrut: "Nos plannings changent sans arrêt à la dernière minute, impossible de prévoir la garde des enfants.", confidentialite: 'confidentiel_elus', etablissement: 'Site Logistique Nord', service: 'Expédition', categorie: 'Temps de travail', resume: "Changements de planning de dernière minute.", statut: 'Nouvelle' },
       { typeId: 'probleme_collectif', texteBrut: "Les horaires sont modifiés très tard, parfois la veille pour le lendemain, c'est ingérable.", confidentialite: 'anonyme_total', etablissement: 'Site Logistique Nord', service: 'Préparation', categorie: 'Temps de travail', resume: "Horaires modifiés la veille pour le lendemain.", statut: 'Nouvelle' },
-      { typeId: 'rps', texteBrut: "Depuis la réorganisation, la charge de travail a explosé et plusieurs collègues sont en souffrance. On ne prend plus de pauses.", confidentialite: 'identite_transmissible', etablissement: 'Atelier Production Sud', service: 'Ligne 2', categorie: 'Risque psychosocial', nom: 'Delphine N.', contact: 'delphine@demo.fr', resume: "Surcharge post-réorganisation, souffrance collective, pauses supprimées.", statut: 'Affectée' },
-      { typeId: 'amelioration', texteBrut: "Il faudrait un point d'eau et un micro-ondes supplémentaire en salle de pause, on est trop nombreux à midi.", confidentialite: 'nominative', etablissement: 'Siège administratif', service: 'Support', categorie: 'Conditions matérielles', nom: 'Thomas Petit', contact: 'thomas.p@demo.fr', resume: "Équipement insuffisant en salle de pause.", statut: 'Prête pour réunion' },
+      { typeId: 'rps', texteBrut: "Depuis la réorganisation, la charge de travail a explosé et plusieurs collègues sont en souffrance. On ne prend plus de pauses.", confidentialite: 'identite_transmissible', etablissement: 'Atelier Production Sud', service: 'Ligne 2', categorie: 'Risque psychosocial', nom: 'Delphine N.', contact: 'delphine@demo.fr', resume: "Surcharge post-réorganisation, souffrance collective, pauses supprimées.", statut: 'À suivre' },
+      { typeId: 'amelioration', texteBrut: "Il faudrait un point d'eau et un micro-ondes supplémentaire en salle de pause, on est trop nombreux à midi.", confidentialite: 'nominative', etablissement: 'Siège administratif', service: 'Support', categorie: 'Conditions matérielles', nom: 'Thomas Petit', contact: 'thomas.p@demo.fr', resume: "Équipement insuffisant en salle de pause.", statut: 'Soumise' },
     ];
 
     demos.forEach((x, i) => {
@@ -420,7 +427,7 @@
         categorie: x.categorie, confidentialite: x.confidentialite,
         etablissement: x.etablissement, service: x.service,
         priorite: type.urgent ? 'Urgente' : (x.categorie === 'Risque psychosocial' ? 'Élevée' : 'Normale'),
-        statut: x.statut, reponses: {}, eluAffecte: x.statut === 'Affectée' ? 'Sonia Berger' : null,
+        statut: x.statut, reponses: {}, eluAffecte: x.statut === 'Soumise' ? 'Sonia Berger' : null,
         notesInternes: '', reponsePubliee: '', motifCloture: '', groupeId: null,
         createdAt: new Date(Date.now() - (i + 1) * 86400000 * 2).toISOString(),
         updatedAt: new Date(Date.now() - i * 86400000).toISOString(),

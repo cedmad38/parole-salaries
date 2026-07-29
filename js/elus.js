@@ -11,6 +11,12 @@
   const appRoot = () => document.getElementById('elus-app');
 
   let session = null;
+  // Une fois « Soumise » (présentée en réunion CSE/CSSCT), une demande reçoit EXACTEMENT
+  // une de ces 5 décisions — jamais plusieurs statuts de fin qui se ressemblent. Résolue
+  // et Laissée de côté sont les deux seuls véritables états terminaux (CLOSED_STATUTS) ;
+  // À suivre / Réponse insuffisante / À représenter restent des dossiers actifs.
+  const OUTCOME_STATUTS = ['Résolue', 'À suivre', 'Réponse insuffisante', 'Laissée de côté', 'À représenter'];
+  const CLOSED_STATUTS = ['Résolue', 'Laissée de côté'];
   const EMPTY_FILTERS = { statut: '', cat: '', etab: '', mois: '', q: '' };
   let state = { view: 'dashboard', currentId: null, filters: Object.assign({}, EMPTY_FILTERS) };
   const SESSION_KEY = 'ps_session';
@@ -216,12 +222,10 @@
     const ds = visibleDemandes();
     return {
       nouvelles: ds.filter(d => d.statut === 'Nouvelle').length,
-      urgentes: ds.filter(d => d.priorite === 'Urgente' && !['Résolue', 'Clôturée', 'Archivée'].includes(d.statut)).length,
-      incompletes: ds.filter(d => d.statut === 'À compléter').length,
-      pretes: ds.filter(d => d.statut === 'Prête pour réunion').length,
+      urgentes: ds.filter(d => d.priorite === 'Urgente' && !CLOSED_STATUTS.includes(d.statut)).length,
       // Une réponse insuffisante remet le dossier « en attente » d'une vraie réponse.
-      attente: ds.filter(d => ['Transmise à la direction', 'Réponse insuffisante'].includes(d.statut)).length,
-      apublier: ds.filter(d => d.statut === 'Réponse reçue' && !d.reponsePubliee).length,
+      attente: ds.filter(d => ['Soumise', 'Réponse insuffisante'].includes(d.statut)).length,
+      apublier: ds.filter(d => OUTCOME_STATUTS.includes(d.statut) && d.statut !== 'À représenter' && !d.reponsePubliee).length,
     };
   }
   function renderShell(contentNode) {
@@ -310,8 +314,7 @@
     const ds = visibleDemandes();
     const st = data.stats();
     const recur = Object.entries(st.byCat).filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1]);
-    const closedStatuts = ['Clôturée', 'Archivée', 'Résolue'];
-    const withDoublons = ds.filter(d => d.iaDoublons && d.iaDoublons.length && !closedStatuts.includes(d.statut));
+    const withDoublons = ds.filter(d => d.iaDoublons && d.iaDoublons.length && !CLOSED_STATUTS.includes(d.statut));
 
     const box = el('div');
     box.innerHTML = `
@@ -320,10 +323,8 @@
       <div class="kpi-grid">
         ${kpi(c.nouvelles, 'Nouvelles demandes', 'primary', 'demandes', { statut: 'Nouvelle' })}
         ${kpi(c.urgentes, 'Urgentes', 'alert', 'demandes', { statut: '' })}
-        ${kpi(c.incompletes, 'À compléter', 'warn', 'demandes', { statut: 'À compléter' })}
-        ${kpi(c.pretes, 'Prêtes pour réunion', 'ok', 'demandes', { statut: 'Prête pour réunion' })}
-        ${kpi(c.attente, 'En attente de réponse', '', 'demandes', { statut: ['Transmise à la direction', 'Réponse insuffisante'] })}
-        ${kpi(c.apublier, 'Réponses à publier', 'ok', 'demandes', { statut: 'Réponse reçue' })}
+        ${kpi(c.attente, 'Soumises, en attente de réponse', '', 'demandes', { statut: ['Soumise', 'Réponse insuffisante'] })}
+        ${kpi(c.apublier, 'Réponses à publier', 'ok', 'demandes', { statut: OUTCOME_STATUTS.filter(s => s !== 'À représenter') })}
       </div>
       <div class="card card-pad" style="margin-bottom:14px">
         <h3>⚠️ Alertes — sujets récurrents (§6.2)</h3>
@@ -420,20 +421,19 @@
   function viewArchives() {
     const doneActions = visibleActions().filter(a => a.urgency === 'done')
       .sort((a, b) => (b.echeance || '').localeCompare(a.echeance || ''));
-    const closedStatuts = ['Clôturée', 'Archivée', 'Résolue'];
-    const closedDemandes = visibleDemandes().filter(d => closedStatuts.includes(d.statut))
+    const closedDemandes = visibleDemandes().filter(d => CLOSED_STATUTS.includes(d.statut))
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
 
     const box = el('div');
     box.innerHTML = `
       <h1>Archives</h1>
-      <p class="page-sub">Actions de suivi terminées et dossiers clôturés — l'historique, à l'écart des vues actives.</p>
+      <p class="page-sub">Actions de suivi terminées et dossiers résolus ou laissés de côté — l'historique, à l'écart des vues actives.</p>
       <div class="card card-pad">
         <h3>Actions de suivi faites ${badge(String(doneActions.length), 'success')}</h3>
         <div id="done-actions"></div>
       </div>
       <div class="card card-pad" style="margin-top:12px">
-        <h3>Demandes clôturées ${badge(String(closedDemandes.length), 'mute')}</h3>
+        <h3>Demandes terminées ${badge(String(closedDemandes.length), 'mute')}</h3>
         <div id="closed-demandes"></div>
       </div>`;
     const doneHost = box.querySelector('#done-actions');
@@ -762,9 +762,15 @@
     renderShell(box);
   }
 
+  // Barre à 2 étapes (Nouvelle → Soumise) plutôt qu'une liste de 7 statuts affichée comme
+  // un parcours linéaire obligatoire — la décision finale n'est pas une « étape de plus »
+  // mais un aboutissement à part, affiché en badge distinct une fois qu'elle est prise.
   function statusFlow(current) {
-    const idx = store.STATUTS.indexOf(current);
-    return store.STATUTS.map((s, i) => `<span class="s ${i === idx ? 'cur' : (i < idx ? 'done' : '')}">${s}</span>`).join('');
+    const isOutcome = OUTCOME_STATUTS.includes(current);
+    const step1 = current === 'Nouvelle' ? 'cur' : 'done';
+    const step2 = current === 'Soumise' ? 'cur' : (isOutcome ? 'done' : '');
+    return `<span class="s ${step1}">Nouvelle</span><span class="s ${step2}">Soumise</span>`
+      + (isOutcome ? badge(current, store.STATUT_COLOR[current] || 'mute') : '');
   }
   function identityBlock(access) {
     if (access.visible && access.data) {
@@ -788,7 +794,10 @@
       etabChoices.map(e => `<option value="${e.id}" ${e.id === curEtabId ? 'selected' : ''}>${escapeHTML(e.nom)}</option>`).join('');
     return `<div class="card card-pad">
       <h3>Actions (§4.3)</h3>
-      <div class="field"><label>Statut</label><select id="a-statut">${opts(store.STATUTS, d.statut)}</select></div>
+      <div class="field"><label>Statut</label><select id="a-statut">
+        <optgroup label="En cours">${opts(['Nouvelle', 'Soumise'], d.statut)}</optgroup>
+        <optgroup label="Décision, après la réunion">${opts(OUTCOME_STATUTS, d.statut)}</optgroup>
+      </select></div>
       <div class="field"><label>Catégorie</label><select id="a-cat"><option value="">— à classer —</option>${opts(store.CATEGORIES, d.categorie)}</select></div>
       <div class="field"><label>Priorité</label><select id="a-prio">${opts(store.PRIORITES, d.priorite)}</select></div>
       <div class="field"><label>Secteur</label><select id="a-etab">${etabOptions}</select></div>
@@ -809,8 +818,7 @@
         <div class="row"><input id="act-resp" type="text" placeholder="Responsable" class="grow" style="min-width:110px"><input id="act-ech" type="date" class="grow" style="min-width:110px"></div>
       </div>
       <button class="btn btn-ghost btn-sm btn-block" id="act-save" type="button">Ajouter l'action</button>
-      <hr class="divider">
-      <button class="btn btn-danger btn-sm btn-block" id="a-close" type="button">Clôturer le dossier</button>
+      <p class="hint" style="margin-top:6px">Passe automatiquement le statut à « À suivre ». Pour clore le dossier (résolu, laissé de côté…), choisissez la décision dans le menu Statut ci-dessus.</p>
       ${canDelete() ? `
       <hr class="divider">
       <button class="btn btn-danger btn-sm btn-block" id="a-delete" type="button" style="background:#8a1c14">🗑️ Supprimer la demande</button>
@@ -839,13 +847,8 @@
     q('#act-save').onclick = async () => {
       const lib = q('#act-lib').value.trim(); if (!lib) { toast('Décrivez l\'action.', 'err'); return; }
       await data.addAction(d.id, { libelle: lib, responsable: q('#act-resp').value.trim(), echeance: q('#act-ech').value }, session.nom);
-      await data.updateDemande(d.id, { statut: 'Action à suivre' }, session.nom);
+      await data.updateDemande(d.id, { statut: 'À suivre' }, session.nom);
       await reload(); toast('Action de suivi ajoutée.'); render();
-    };
-    q('#a-close').onclick = async () => {
-      const motif = prompt('Motif de clôture :', 'Traité'); if (motif == null) return;
-      await data.updateDemande(d.id, { statut: 'Clôturée', motifCloture: motif }, session.nom);
-      await reload(); toast('Dossier clôturé.'); render();
     };
     const del = q('#a-delete');
     if (del) del.onclick = async () => {

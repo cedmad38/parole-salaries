@@ -1,5 +1,58 @@
 # Journal — Parole Salariés By Cedmad
 
+## Refonte des statuts : 12 → 7, cycle de vie simplifié — 2026-07-25
+**Statut : en cours**
+
+Retour utilisateur, après un premier CSE réel : le système à 12 statuts était
+flou, en particulier au moment de choisir entre Résolue / Clôturée / Archivée
+qui se ressemblent. Demande explicite : « on reçoit la question, on la soumet,
+soit elle est résolue, soit on doit suivre l'évolution, soit on la laisse de
+côté, soit on la propose au prochain CSE/CSSCT — rien ne doit être flou ».
+
+**Nouveau cycle (7 statuts, `js/store.js`)** :
+`Nouvelle` → `Soumise` → une seule décision parmi
+`Résolue` / `À suivre` / `Réponse insuffisante` / `Laissée de côté` / `À représenter`.
+
+Remplace l'ancien système où trois statuts de fin quasi synonymes coexistaient
+(Résolue/Clôturée/Archivée), plus À compléter/En analyse/Affectée/Prête pour
+réunion/Transmise à la direction/Réponse reçue qui décrivaient tous, en
+pratique, la même chose : « pas encore soumis » ou « en attente d'une réponse ».
+Deux cas tranchés avec l'utilisateur : « À compléter » disparaît dans
+« Nouvelle » (se gère par les messages au salarié, pas par un statut à part) ;
+« Réponse insuffisante » reste un statut séparé (ne se fond pas dans « À suivre »).
+
+Changements dans `js/elus.js` :
+- `statusFlow()` réécrite : barre à 2 étapes (Nouvelle → Soumise) au lieu d'une
+  liste de 7 statuts affichée comme un parcours linéaire obligatoire — la
+  décision finale n'est pas « une étape de plus » mais un badge à part, affiché
+  uniquement une fois prise.
+- Menu **Statut** de la fiche réorganisé en deux groupes (`<optgroup>`) : « En
+  cours » et « Décision, après la réunion ».
+- Bouton **« Clôturer le dossier »** (prompt « Motif de clôture » en texte
+  libre) supprimé — c'était lui, la vraie source du flou : on notait *pourquoi*
+  sans jamais dire *quoi*. Remplacé par le menu Statut lui-même.
+- KPI du tableau de bord réduits de 6 à 4 cartes (retrait de « À compléter » et
+  « Prêtes pour réunion », qui n'existent plus).
+- `CLOSED_STATUTS` = `Résolue` + `Laissée de côté` seulement — `À suivre`,
+  `Réponse insuffisante` et `À représenter` restent des dossiers actifs
+  (Archives, alerte doublons IA, KPI « Urgentes »).
+
+Bug de fond corrigé au passage : `addReponseDirection()` (`js/api.js` et
+`js/store.js`) forçait silencieusement le statut à « Réponse reçue » dès
+qu'une réponse de la direction était collée — un changement de statut que
+l'élu n'avait jamais choisi. Supprimé : enregistrer la réponse ne change plus
+le statut ; la décision (Résolue / À suivre / …) reste un choix explicite via
+le menu Statut.
+
+**Migration des données réelles** (Supabase, en direct, vérifiée par requête) :
+21 demandes, 5 statuts utilisés → reclassées ainsi :
+- `Transmise à la direction` (1) → `Soumise`
+- `Action à suivre` (8) → `À suivre`
+- `Clôturée` (10) → `Laissée de côté` — mapping par défaut faute de pouvoir
+  distinguer automatiquement lesquelles étaient en réalité résolues ; à
+  corriger manuellement au cas par cas si besoin, via le menu Statut.
+- `Nouvelle` (1) et `Réponse insuffisante` (1) : inchangés.
+
 ## Secteur obligatoire côté salarié + « Tous les secteurs » — 2026-07-25
 **Statut : en cours**
 

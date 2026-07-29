@@ -187,9 +187,11 @@
     if (error) throw error;
     return !!data;
   }
+  // Enregistre la réponse de la direction SANS changer le statut : la décision qui suit
+  // (Résolue / À suivre / Réponse insuffisante / …) doit être un choix explicite de l'élu
+  // dans le menu Statut, jamais un changement automatique et silencieux.
   async function addReponseDirection(demandeId, texte, actor) {
     await db().from('reponses_direction').insert({ demande_id: demandeId, texte });
-    await updateDemande(demandeId, { statut: 'Réponse reçue' });
   }
   async function addAction(demandeId, action, actor) {
     await db().from('actions_suivi').insert({ demande_id: demandeId, libelle: action.libelle,
@@ -249,7 +251,7 @@
       byMonth[(d.createdAt || '').slice(0, 7)] = (byMonth[(d.createdAt || '').slice(0, 7)] || 0) + 1;
       byEtab[d.etablissement || '—'] = (byEtab[d.etablissement || '—'] || 0) + 1;
     });
-    const sansReponse = ds.filter(d => !['Résolue', 'Clôturée', 'Archivée', 'Réponse reçue'].includes(d.statut)).length;
+    const sansReponse = ds.filter(d => !['Résolue', 'À suivre', 'Réponse insuffisante', 'Laissée de côté', 'À représenter'].includes(d.statut)).length;
     return { total: ds.length, byCat, byMonth, byEtab, sansReponse, engagementsEchus: 0, seuil };
   }
   async function etablissements() { const { data } = await db().from('etablissements').select('*'); return data || []; }
